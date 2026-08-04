@@ -39,9 +39,16 @@ async function processCCCD(input) {
 
         const serverRes = await response.json();
 
-        if (serverRes.status === "success" && serverRes.data && serverRes.data.candidates) {
+            if (serverRes.status === "success" && serverRes.data && serverRes.data.candidates) {
             let rawText = serverRes.data.candidates[0].content.parts[0].text.trim();
-            rawText = rawText.replace(/```json|```/g, "").trim();
+            
+            // Xử lý làm sạch chuỗi, loại bỏ mọi định dạng markdown bọc ngoài nếu có
+            rawText = rawText.replace(/```json/g, "").replace(/```/g, "").trim();
+            const firstOpen = rawText.indexOf('{');
+            const lastClose = rawText.lastIndexOf('}');
+            if (firstOpen !== -1 && lastClose !== -1) {
+                rawText = rawText.substring(firstOpen, lastClose + 1);
+            }
             const info = JSON.parse(rawText);
 
             if (info.error) {
