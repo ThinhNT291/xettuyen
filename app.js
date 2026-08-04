@@ -5,9 +5,6 @@ let lookupData = [];
 const sysSep = (1.1).toLocaleString().substring(1, 2);
 const wrongSep = sysSep === '.' ? ',' : '.';
 // ==========================================
-// BỘ MÁY XÉT DUYỆT 2 PHA (HỒ SƠ & ĐIỂM)
-// ==========================================
-// ==========================================
 // BỘ MÁY XÉT DUYỆT 2 PHA (HỒ SƠ & ĐIỂM) - ĐÃ CẬP NHẬT TRẠNG THÁI MỀM
 // ==========================================
 function autoCheckAdmission() {
