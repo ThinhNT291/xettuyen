@@ -14,7 +14,8 @@ async function processCCCD(input) {
     
     showAlert("Đang gửi ảnh cho AI phân tích. Quá trình này mất khoảng 2-5 giây...", "⏳ ĐANG XỬ LÝ ẢNH", false);
     
-    if (!API_KEY_FPT || API_KEY_FPT === "Kb14vG3ftfTc9mumbExPNBA51687IHLk") {
+    if (!API_KEY_FPT || API_KEY_FPT === "curl -X POST https://api.fpt.ai/vision/idr/vnm -H "api-key: Kb14vG3ftfTc9mumbExPNBA51687IHLk" -F "image=@"
+") {
         showAlert("Chưa cấu hình API", "❌ LỖI CẤU HÌNH", true);
         input.value = ""; return;
     }
