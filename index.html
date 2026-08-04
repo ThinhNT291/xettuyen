@@ -1,0 +1,364 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Hệ Thống Nhập Liệu Tuyển Sinh</title>
+    <!-- GỌI FILE CSS LÀM ĐẸP VÀO ĐÂY -->
+    <link rel="stylesheet" href="style.css">
+    
+    <script src="https://cdn.sheetjs.com/xlsx-latest/package/dist/xlsx.full.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/PapaParse/5.4.1/papaparse.min.js"></script>
+</head>
+<body>
+
+<div class="container">
+    <h2>📝 CỔNG NHẬP LIỆU HỒ SƠ TUYỂN SINH</h2>
+    
+    <div class="section-title">I. THÔNG TIN CHUNG</div>
+    <div class="form-grid">
+        
+        <!-- ĐÃ BỔ SUNG NÚT QUÉT ẢNH OCR Ở ĐÂY -->
+        <div class="form-group">
+            <div style="display: flex; justify-content: space-between; align-items: flex-end; margin-bottom: 5px;">
+                <label for="cccd" style="margin-bottom: 0;">Số CCCD <span class="req">(*)</span>:</label>
+                <!-- Thẻ input hidden dùng để tải file ảnh -->
+                <input type="file" id="cccd_upload" accept="image/*" style="display:none;" onchange="processCCCD(this)">
+                <button type="button" class="btn-mini" style="background: #e65100; margin-bottom: 0;" onclick="document.getElementById('cccd_upload').click()">🤖 Quét ảnh tự điền</button>
+            </div>
+            <input type="text" id="cccd" placeholder="Nhập 12 số CCCD" required>
+        </div>
+        
+        <div class="form-group">
+            <label for="hoten">Họ và tên <span class="req">(*)</span>:</label>
+            <input type="text" id="hoten" placeholder="Nguyễn Văn A" required>
+        </div>
+        <div class="form-group">
+            <label for="ngaysinh">Ngày sinh <span class="req">(*)</span>:</label>
+            <input type="date" id="ngaysinh" required>
+        </div>
+        <div class="form-group">
+            <label for="nganh">Ngành đào tạo <span class="req">(*)</span>:</label>
+            <select id="nganh" required>
+                <option value="" disabled selected>-- Chọn ngành xét tuyển --</option>
+                <option value="Ngôn ngữ Anh">Ngôn ngữ Anh</option>
+                <option value="Ngôn ngữ Trung Quốc">Ngôn ngữ Trung Quốc</option>
+                <option value="CNTT - ĐHKTS">CNTT - ĐHKTS</option>
+                <option value="Quản trị kinh doanh">Quản trị kinh doanh</option>
+                <option value="Quản trị dịch vụ du lịch và lữ hành">Quản trị dịch vụ du lịch và lữ hành</option>
+            </select>
+        </div>
+        <div class="form-group">
+            <label for="khoa">Khóa <span class="req">(*)</span>:</label>
+            <select id="khoa" required>
+                <option value="" disabled selected>-- Chọn --</option>
+                <option value="01">01</option>
+                <option value="02">02</option>
+                <option value="03">03</option>
+                <option value="04">04</option>
+            </select>
+        </div>
+        <div class="form-group">
+            <label for="doituonguutien">Đối tượng ưu tiên <span class="req">(*)</span>:</label>
+            <select id="doituonguutien" required>
+                <option value="" disabled selected>-- Chọn --</option>
+                <option value="Không ưu tiên">Không ưu tiên</option>
+                <option value="ĐT 01">ĐT 01</option>
+                <option value="ĐT 02">ĐT 02</option>
+                <option value="ĐT 03">ĐT 03</option>
+                <option value="ĐT 04">ĐT 04</option>
+                <option value="ĐT 05">ĐT 05</option>
+                <option value="ĐT 06">ĐT 06</option>
+                <option value="ĐT 07">ĐT 07</option>
+            </select>
+        </div>
+        <div class="form-group">
+            <div style="display: flex; justify-content: space-between; align-items: flex-end; margin-bottom: 5px;">
+                <label for="khuvucuutien" style="margin-bottom: 0;">Khu vực ưu tiên <span class="req">(*)</span>:</label>
+                <button type="button" class="btn-mini" style="background: #0288d1; margin-bottom: 0;" onclick="openLookupModal()">🔍 Tra cứu KV</button>
+            </div>
+            <select id="khuvucuutien" required>
+                <option value="" disabled selected>-- Chọn --</option>
+                <option value="KV 01">KV 01</option>
+                <option value="KV 02-NT">KV 02-NT</option>
+                <option value="KV 02">KV 02</option>
+                <option value="KV 03">KV 03</option>
+            </select>
+        </div>
+        <div class="form-group">
+            <label for="doituongdauvao">Đối tượng đầu vào <span class="req">(*)</span>:</label>
+            <select id="doituongdauvao" required onchange="handleDoiTuongChange()">
+                <option value="" disabled selected>-- Chọn để hiển thị hồ sơ & điểm tương ứng --</option>
+                <option value="Tốt nghiệp THPT">Tốt nghiệp THPT</option>
+                <option value="Tốt nghiệp Trung cấp sau 2022">Tốt nghiệp Trung cấp sau 2022</option>
+                <option value="Tốt nghiệp Trung cấp trước 2022">Tốt nghiệp Trung cấp trước 2022</option>
+                <option value="Tốt nghiệp Cao đẳng">Tốt nghiệp Cao đẳng</option>
+                <option value="Tốt nghiệp Đại học">Tốt nghiệp Đại học</option>
+                <option value="Trung học nghề">Trung học nghề</option>
+            </select>
+        </div>
+        <div class="form-group">
+            <label for="namtt">Năm xét tuyển <span class="req">(*)</span>:</label>
+            <select id="namtt" required>
+                <option value="" disabled selected>-- Chọn --</option>
+                <option value="2026">2026</option>
+                <option value="2027">2027</option>
+            </select>
+        </div>
+        <div class="form-group">
+            <label for="hedaotao">Hệ đào tạo <span class="req">(*)</span>:</label>
+            <select id="hedaotao" required>
+                <option value="" disabled selected>-- Chọn hệ đào tạo --</option>
+                <option value="Cao đẳng">Cao đẳng</option>
+                <option value="Đại học chính quy">Đại học chính quy</option>
+                <option value="Liên thông ĐH - ĐH (Văn bằng 2)">Liên thông ĐH - ĐH (Văn bằng 2)</option>
+                <option value="Thường xuyên: Phương thức ĐTTX">Thường xuyên: Phương thức ĐTTX</option>
+                <option value="Liên thông từ CĐ lên ĐH">Liên thông từ CĐ lên ĐH</option>
+                <option value="Thường xuyên: Phương thức VLVH">Thường xuyên: Phương thức VLVH</option>
+                <option value="Thạc sĩ">Thạc sĩ</option>
+                <option value="Khóa ngắn hạn cấp chứng chỉ">Khóa ngắn hạn cấp chứng chỉ</option>
+            </select>
+        </div>
+        <div class="form-group">
+            <label for="htdaotao">Hình thức đào tạo <span class="req">(*)</span>:</label>
+            <select id="htdaotao" required>
+                <option value="" disabled selected>-- Chọn hình thức học --</option>
+                <option value="Thường xuyên: Phương thức ĐTTX">Thường xuyên: Phương thức ĐTTX</option>
+                <option value="Chính quy đại trà">Chính quy đại trà</option>
+                <option value="Liên thông ĐH - ĐH chính quy (VB 2)">Liên thông ĐH - ĐH chính quy (VB 2)</option>
+                <option value="Thường xuyên: Phương thức VLVH">Thường xuyên: Phương thức VLVH</option>
+            </select>
+        </div>
+
+        <div class="form-group full-width" style="margin-top: 10px; border-top: 1px dashed #cccccc; padding-top: 15px;">
+            <label for="link_folder" style="color: #0288d1;">🔗 Link Folder chứa hồ sơ (Không bắt buộc):</label>
+            <input type="text" id="link_folder" placeholder="Dán link thư mục chứa hồ sơ của thí sinh (Ví dụ: https://drive.google.com/drive/folders/...)" style="border-color: #0288d1;">
+        </div>
+    </div>
+
+    <div class="section-title">II. CHECKLIST HỒ SƠ ĐÍNH KÈM</div>
+    
+    <div class="doc-common-box">
+        <div class="doc-common-header">
+            <h4>📁 HỒ SƠ CHUNG</h4>
+            <button type="button" class="btn-mini" onclick="selectAllCommon()">⚡ Chọn tất cả hồ sơ chung</button>
+        </div>
+        <div class="checkbox-grid">
+            <label class="checkbox-item"><input type="checkbox" id="doc_phieu_dk" class="doc-chk-common"><span>PHIẾU ĐĂNG KÝ DỰ TUYỂN</span></label>
+            <label class="checkbox-item"><input type="checkbox" id="doc_syll" class="doc-chk-common"><span>SƠ YẾU LÝ LỊCH</span></label>
+            <label class="checkbox-item"><input type="checkbox" id="doc_cccd" class="doc-chk-common"><span>BẢN SAO CCCD</span></label>
+            <label class="checkbox-item"><input type="checkbox" id="doc_khaisinh" class="doc-chk-common"><span>BẢN SAO GIẤY KHAI SINH</span></label>
+            <label class="checkbox-item"><input type="checkbox" id="doc_anhthe" class="doc-chk-common"><span>ẢNH THẺ</span></label>
+        </div>
+    </div>
+
+    <div class="doc-container">
+        <div id="doc-placeholder" class="doc-placeholder">👈 Chọn "Đối tượng đầu vào" ở mục I</div>
+
+        <div id="group-thpt" class="doc-group">
+            <h4>📁 Hồ sơ áp dụng cho: Tốt nghiệp THPT</h4>
+            <div class="checkbox-grid">
+                <label class="checkbox-item"><input type="checkbox" id="doc_bang_thpt" class="doc-chk-dynamic"><span>BẢN SAO BẰNG THPT/GIẤY BÁO ĐIỂM</span></label>
+                <label class="checkbox-item"><input type="checkbox" id="doc_hocba_thpt" class="doc-chk-dynamic"><span>BẢN SAO HỌC BẠ THPT</span></label>
+            </div>
+        </div>
+
+        <div id="group-tc-sau2022" class="doc-group">
+            <h4>📁 Hồ sơ áp dụng cho: Tốt nghiệp Trung cấp sau 2022</h4>
+            <div class="checkbox-grid">
+                <label class="checkbox-item"><input type="checkbox" id="doc_bang_tc" class="doc-chk-dynamic"><span>BẢN SAO BẰNG TRUNG CẤP</span></label>
+                <label class="checkbox-item"><input type="checkbox" id="doc_diem_tc" class="doc-chk-dynamic"><span>BẢNG ĐIỂM TRUNG CẤP</span></label>
+                <label class="checkbox-item"><input type="checkbox" id="doc_ktvh_thpt" class="doc-chk-dynamic"><span>BẰNG THPT/GCN ĐỦ KL KTVH THPT</span></label>
+            </div>
+        </div>
+
+        <div id="group-tc-truoc2022" class="doc-group">
+            <h4>📁 Hồ sơ áp dụng cho: Tốt nghiệp Trung cấp trước 2022 / Trung học nghề</h4>
+            <div class="checkbox-grid">
+                <label class="checkbox-item"><input type="checkbox" id="doc_bang_tc_truoc" class="doc-chk-dynamic"><span>BẢN SAO BẰNG TRUNG CẤP TRƯỚC 2022</span></label>
+                <label class="checkbox-item"><input type="checkbox" id="doc_diem_tc_truoc" class="doc-chk-dynamic"><span>BẢNG ĐIỂM TRUNG CẤP TRƯỚC 2022</span></label>
+                <label class="checkbox-item"><input type="checkbox" id="doc_gcn_gdpt" class="doc-chk-dynamic"><span>GCN HOÀN THÀNH CT GDPT</span></label>
+            </div>
+        </div>
+
+        <div id="group-caodang" class="doc-group">
+            <h4>📁 Hồ sơ áp dụng cho: Tốt nghiệp Cao đẳng</h4>
+            <div class="checkbox-grid">
+                <label class="checkbox-item"><input type="checkbox" id="doc_bang_cd" class="doc-chk-dynamic"><span>BẰNG CAO ĐẲNG</span></label>
+                <label class="checkbox-item"><input type="checkbox" id="doc_diem_cd" class="doc-chk-dynamic"><span>BẢNG ĐIỂM CAO ĐẲNG</span></label>
+            </div>
+        </div>
+
+        <div id="group-daihoc" class="doc-group">
+            <h4>📁 Hồ sơ áp dụng cho: Tốt nghiệp Đại học</h4>
+            <div class="checkbox-grid">
+                <label class="checkbox-item"><input type="checkbox" id="doc_bang_dh" class="doc-chk-dynamic"><span>BẰNG ĐẠI HỌC</span></label>
+                <label class="checkbox-item"><input type="checkbox" id="doc_diem_dh" class="doc-chk-dynamic"><span>BẢNG ĐIỂM ĐẠI HỌC</span></label>
+            </div>
+        </div>
+
+        <div class="form-group" style="margin-top: 15px; border-top: 1px solid #b2ebf2; padding-top: 15px;">
+            <label for="giay_uutien">GIẤY TỜ ƯU TIÊN (Không bắt buộc):</label>
+            <input type="text" id="giay_uutien" placeholder="Giấy ưu tiên, nếu có">
+        </div>
+    </div>
+
+    <div class="section-title">III. THÔNG TIN ĐIỂM SỐ</div>
+    <div class="score-container">
+        
+        <div class="sep-notice">
+            <span>💡 <b>Lưu ý:</b> Sử dụng <b>DẤU [<span id="sys-sep-display" style="font-size:16px; color:#d32f2f;"></span>]</b> để phân cách thập phân. Vui lòng gõ đúng dấu khi nhập số lẻ (Ví dụ: <b id="sys-sep-example">8.5</b>)!</span>
+        </div>
+
+        <div id="score-placeholder" class="doc-placeholder">👈 Vui lòng chọn "Đối tượng đầu vào" </div>
+
+        <div id="score-thpt-group" class="score-group">
+            <h4>📊 Điểm học bạ / kỳ thi THPT/ Đánh giá năng lực:</h4>
+            <div class="score-grid">
+                <div class="form-group"><label>TOÁN:</label><input type="text" inputmode="decimal" id="diem_toan" class="score-thpt-input score-val" placeholder="0.0"></div>
+                <div class="form-group"><label>VẬT LÍ:</label><input type="text" inputmode="decimal" id="diem_vatli" class="score-thpt-input score-val" placeholder="0.0"></div>
+                <div class="form-group"><label>HÓA HỌC:</label><input type="text" inputmode="decimal" id="diem_hoahoc" class="score-thpt-input score-val" placeholder="0.0"></div>
+                <div class="form-group"><label>SINH HỌC:</label><input type="text" inputmode="decimal" id="diem_sinhhoc" class="score-thpt-input score-val" placeholder="0.0"></div>
+                <div class="form-group"><label>NGỮ VĂN:</label><input type="text" inputmode="decimal" id="diem_nguvan" class="score-thpt-input score-val" placeholder="0.0"></div>
+                <div class="form-group"><label>LỊCH SỬ:</label><input type="text" inputmode="decimal" id="diem_lichsu" class="score-thpt-input score-val" placeholder="0.0"></div>
+                <div class="form-group"><label>ĐỊA LÝ:</label><input type="text" inputmode="decimal" id="diem_dialy" class="score-thpt-input score-val" placeholder="0.0"></div>
+                <div class="form-group"><label>TIẾNG ANH:</label><input type="text" inputmode="decimal" id="diem_tienganh" class="score-thpt-input score-val" placeholder="0.0"></div>
+                <div class="form-group"><label>TIẾNG TRUNG:</label><input type="text" inputmode="decimal" id="diem_tiengtrung" class="score-thpt-input score-val" placeholder="0.0"></div>
+                <div class="form-group"><label>TIN HỌC:</label><input type="text" inputmode="decimal" id="diem_tinhoc" class="score-thpt-input score-val" placeholder="0.0"></div>
+                <div class="form-group"><label>GDKTPL:</label><input type="text" inputmode="decimal" id="diem_gdktpl" class="score-thpt-input score-val" placeholder="0.0"></div>
+            </div>
+        </div>
+
+        <div id="score-other-group" class="score-group">
+            <h4>📊 Điểm trung bình toàn khóa (Chỉ cần điền 1 trong 2 hệ):</h4>
+            <div class="form-grid">
+                <div class="form-group"><label for="diem_tb_he4">ĐIỂM TB TOÀN KHÓA HỆ 4:</label><input type="text" inputmode="decimal" id="diem_tb_he4" class="score-other-input score-val" placeholder="0.0"></div>
+                <div class="form-group"><label for="diem_tb_he10">ĐIỂM TB TOÀN KHÓA HỆ 10:</label><input type="text" inputmode="decimal" id="diem_tb_he10" class="score-other-input score-val" placeholder="0.0"></div>
+            </div>
+        </div>
+
+        <div class="form-group" style="margin-top: 15px; border-top: 1px solid #b2ebf2; padding-top: 15px;">
+            <label for="diem_cong">ĐIỂM CỘNG (Nếu có):</label>
+            <input type="text" inputmode="decimal" id="diem_cong" class="score-val" placeholder="0.0">
+        </div>
+    </div>
+
+    <!-- KHU VỰC NÚT BẤM -->
+    <div class="btn-group">
+        <button class="btn-add" id="btnAddUpdate" onclick="addRow()">➕ Thêm vào danh sách</button>
+        <button class="btn-clear" id="btnCancelEdit" style="display:none; background-color: #6c757d;" onclick="cancelEdit()">❌ Hủy sửa</button>
+    </div>
+
+    <!-- KHUNG ĐÈN GIAO THÔNG XÉT TUYỂN TỰ ĐỘNG -->
+    <div id="traffic-light-box" style="margin-top: 20px; padding: 15px; border-radius: 6px; background-color: #f8f9fa; border: 1px solid #ddd; display: none; align-items: flex-start; gap: 15px;">
+        <div id="tl-icon" style="font-size: 35px; line-height: 1;">🚥</div>
+        <div style="flex: 1;">
+            <h4 id="tl-title" style="margin: 0 0 8px 0; font-size: 16px; text-transform: uppercase;">Đang phân tích dữ liệu...</h4>
+            <div id="tl-hs-desc" style="margin: 0 0 5px 0; font-size: 14px; font-weight: 500;"></div>
+            <div id="tl-diem-desc" style="margin: 0; font-size: 14px; color: #444;"></div>
+        </div>
+    </div>
+
+    <div class="table-wrapper" style="margin-top: 20px;">
+        <table>
+            <thead>
+                <tr>
+                    <th>STT</th>
+                    <th>TRẠNG THÁI</th>
+                    <th>SỐ CCCD</th>
+                    <th>TÊN SINH VIÊN</th>
+                    <th>NGÀY SINH</th>
+                    <th>NGÀNH</th>
+                    <th>KHÓA</th>
+                    <th>ĐỐI TƯỢNG ƯU TIÊN</th>
+                    <th>KHU VỰC ƯU TIÊN</th>
+                    <th>ĐỐI TƯỢNG ĐẦU VÀO</th>
+                    <th>NĂM XÉT TUYỂN</th>
+                    <th>HỆ ĐÀO TẠO</th>
+                    <th>HÌNH THỨC ĐÀO TẠO</th>
+                    <th>LINK HỒ SƠ</th>
+                    <th>PHIẾU ĐĂNG KÝ</th>
+                    <th>SƠ YẾU LÝ LỊCH</th>
+                    <th>BẢN SAO CCCD</th>
+                    <th>GIẤY KHAI SINH</th>
+                    <th>ẢNH THẺ</th>
+                    <th>BẰNG THPT</th>
+                    <th>HỌC BẠ THPT</th>
+                    <th>BẰNG TC</th>
+                    <th>ĐIỂM TC</th>
+                    <th>GCN KTVH</th>
+                    <th>BẰNG TC (<2022)</th>
+                    <th>ĐIỂM TC (<2022)</th>
+                    <th>GCN GDPT</th>
+                    <th>BẰNG CĐ</th>
+                    <th>ĐIỂM CĐ</th>
+                    <th>BẰNG ĐH</th>
+                    <th>ĐIỂM ĐH</th>
+                    <th>GIẤY ƯU TIÊN</th>
+                    <th>TOÁN</th>
+                    <th>VẬT LÍ</th>
+                    <th>HÓA HỌC</th>
+                    <th>SINH HỌC</th>
+                    <th>NGỮ VĂN</th>
+                    <th>LỊCH SỬ</th>
+                    <th>ĐỊA LÝ</th>
+                    <th>TIẾNG ANH</th>
+                    <th>TIẾNG TRUNG</th>
+                    <th>TIN HỌC</th>
+                    <th>GDKTPL</th>
+                    <th>ĐIỂM TB HỆ 4</th>
+                    <th>ĐIỂM TB HỆ 10</th>
+                    <th>ĐIỂM CỘNG</th>
+                    <th>THAO TÁC</th>
+                </tr>
+            </thead>
+            <tbody id="tableBody"></tbody>
+        </table>
+    </div>
+    
+    <div class="btn-group btn-bottom">
+        <button class="btn-clear" onclick="clearTable()">🗑️ Xóa làm lại</button>
+        <button class="btn-export" onclick="exportToExcel()">📥 Xuất file Excel</button>
+        <button class="btn-push" id="btnPush" onclick="sendToCloud()">☁️ Đẩy dữ liệu lên hệ thống</button>
+    </div>
+
+    <!-- FOOTER CHỮ KÝ -->
+    <div style="display: flex; justify-content: space-between; align-items: center; margin-top: 15px; border-top: 1px dashed #e0e0e0; padding-top: 10px;">
+        <div class="status-bar" id="statusBar" style="margin-top: 0;">Chưa có dữ liệu nào được nhập trong phiên này.</div>
+        <div style="font-size: 12px; color: #888; font-style: italic;">Liên hệ hỗ trợ: Nguyễn Tiến Thịnh _ 0985-822037</div>
+    </div>
+</div>
+
+<!-- KHUNG MODAL THAY THẾ ALERT / CONFIRM CỦA TRÌNH DUYỆT -->
+<div id="customModal" class="modal-overlay">
+    <div class="modal-box">
+        <div id="modalHeader" class="modal-header"></div>
+        <div id="modalBody" class="modal-body"></div>
+        <div id="modalFooter" class="modal-footer"></div>
+    </div>
+</div>
+
+<!-- KHUNG MODAL TRA CỨU KHU VỰC -->
+<div id="lookupModal" class="modal-overlay">
+    <div class="modal-box" style="max-width: 1100px; width: 95%; height: 85vh; display: flex; flex-direction: column;">
+        <div class="modal-header info" style="flex-direction: column; align-items: flex-start; gap: 10px; padding: 15px 20px;">
+            <div style="display: flex; justify-content: space-between; width: 100%;">
+                <span style="font-weight: bold; font-size: 16px; color: #006666;">🗺️ TRA CỨU KHU VỰC ƯU TIÊN</span>
+                <span style="cursor: pointer; font-size: 20px; line-height: 1; color: #d32f2f;" onclick="closeLookupModal()">✖</span>
+            </div>
+            <input type="text" id="searchInput" placeholder="🔍 Nhập tên trường, xã, huyện để tìm kiếm..." style="width: 100%; max-width: 450px; padding: 8px 12px; border: 1px solid #ccc; border-radius: 4px; font-size: 14px;" onkeyup="searchLookupTable()">
+        </div>
+        <div class="modal-body" style="flex: 1; padding: 0; overflow: auto; background: #f9f9f9;">
+            <div id="lookupContent" style="padding: 15px;">
+                <p style="text-align: center; color: #666; font-style: italic; margin-top: 30px;">Đang thiết lập hệ thống, vui lòng chờ...</p>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- ĐÂY LÀ 2 DÒNG QUAN TRỌNG NHẤT ĐỂ GỌI MÃ TỪ 2 FILE BÊN NGOÀI VÀO -->
+<script src="data_config.js"></script>
+<script src="app.js"></script>
+
+</body>
+</html>
