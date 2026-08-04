@@ -4,10 +4,6 @@ let lookupData = [];
 
 const sysSep = (1.1).toLocaleString().substring(1, 2);
 const wrongSep = sysSep === '.' ? ',' : '.';
-
-// ==========================================
-// TÍCH HỢP AI ĐỌC CCCD (FPT OCR)
-// ==========================================
 // ==========================================
 // TÍCH HỢP GEMINI AI ĐỌC CCCD (VIA BACKEND PROXY)
 // ==========================================
