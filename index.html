@@ -17,14 +17,9 @@
     
     <div class="section-title">I. THÔNG TIN CHUNG</div>
     <div class="form-grid">
-        
-        <!-- ĐÃ BỔ SUNG NÚT QUÉT ẢNH OCR Ở ĐÂY -->
         <div class="form-group">
             <div style="display: flex; justify-content: space-between; align-items: flex-end; margin-bottom: 5px;">
-                <label for="cccd" style="margin-bottom: 0;">Số CCCD <span class="req">(*)</span>:</label>
-                <!-- Thẻ input hidden dùng để tải file ảnh -->
-                <input type="file" id="cccd_upload" accept="image/*" style="display:none;" onchange="processCCCD(this)">
-                <button type="button" class="btn-mini" style="background: #e65100; margin-bottom: 0;" onclick="document.getElementById('cccd_upload').click()">🤖 Quét ảnh tự điền</button>
+                <label for="cccd" style="margin-bottom: 0;">Số CCCD <span class="req">(*)</span>:</label> 
             </div>
             <input type="text" id="cccd" placeholder="Nhập 12 số CCCD" required>
         </div>
