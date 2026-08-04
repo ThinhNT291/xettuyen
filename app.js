@@ -4,6 +4,7 @@ let lookupData = [];
 
 const sysSep = (1.1).toLocaleString().substring(1, 2);
 const wrongSep = sysSep === '.' ? ',' : '.';
+
 // ==========================================
 // TÍCH HỢP GEMINI AI ĐỌC CCCD (VIA BACKEND PROXY)
 // ==========================================
@@ -38,7 +39,7 @@ async function processCCCD(input) {
 
         const serverRes = await response.json();
 
-        if (serverRes.status === "success" && serverRes.data.candidates) {
+        if (serverRes.status === "success" && serverRes.data && serverRes.data.candidates) {
             let rawText = serverRes.data.candidates[0].content.parts[0].text.trim();
             rawText = rawText.replace(/```json|```/g, "").trim();
             const info = JSON.parse(rawText);
@@ -129,9 +130,9 @@ function autoCheckAdmission() {
 
             if (finalScore >= 15.0) {
                 diemStatus = "PASS";
-                diemMsg = `Tổng điểm: <b>${finalScore}</b> (Tổ hợp cao nhất: ${bestCombo} = ${maxScore}đ | Ưu tiên: ${uTienChinhThuc}đ). Điểm chuẩn: 15.0đ.`;
+                diemMsg = `Tổng điểm: <b>${finalScore}</b> (Tổ hợp: ${bestCombo} = ${maxScore}đ | Ưu tiên: ${uTienChinhThuc}đ). Chuẩn: 15.0đ.`;
             } else {
-                diemMsg = `Tổng điểm: <b>${finalScore}</b> (Tổ hợp cao nhất: ${bestCombo} = ${maxScore}đ | Ưu tiên: ${uTienChinhThuc}đ). Thiếu ${(15.0 - finalScore).toFixed(2)}đ.`;
+                diemMsg = `Tổng điểm: <b>${finalScore}</b> (Tổ hợp: ${bestCombo} = ${maxScore}đ | Ưu tiên: ${uTienChinhThuc}đ). Thiếu ${(15.0 - finalScore).toFixed(2)}đ.`;
             }
         }
     } else {
@@ -139,7 +140,7 @@ function autoCheckAdmission() {
         if (isNaN(he4) && isNaN(he10)) {
             diemMsg = "Vui lòng nhập Điểm trung bình toàn khóa (Hệ 4 hoặc Hệ 10).";
         } else if (he4 >= 2.0 || he10 >= 5.0) {
-            diemStatus = "PASS"; diemMsg = `Đạt chuẩn điểm hệ Cao đẳng/Đại học/Trung cấp (Hệ 4: ${he4 || '-'} | Hệ 10: ${he10 || '-'}).`;
+            diemStatus = "PASS"; diemMsg = `Đạt chuẩn điểm hệ CĐ/ĐH/TC (Hệ 4: ${he4 || '-'} | Hệ 10: ${he10 || '-'}).`;
         } else {
             diemMsg = `Không đạt chuẩn điểm (Yêu cầu: Hệ 4 >= 2.0 hoặc Hệ 10 >= 5.0).`;
         }
@@ -153,7 +154,6 @@ function autoCheckAdmission() {
     hsDescEl.innerHTML = hsMsg; hsDescEl.style.color = hsColor;
     diemDescEl.innerHTML = `📊 Kết quả điểm: ${diemMsg}`;
 
-    // ĐÃ THAY ĐỔI WORDING CHO AN TOÀN PHÁP LÝ
     if (hsStatus === "FAIL") {
         box.style.backgroundColor = '#f8d7da'; box.style.borderColor = '#f5c6cb';
         iconEl.innerHTML = '🔴'; titleEl.innerHTML = "KHÔNG ĐỦ ĐIỀU KIỆN SƠ TUYỂN"; titleEl.style.color = '#721c24';
@@ -170,9 +170,8 @@ function autoCheckAdmission() {
 }
 
 // ==========================================
-// CÁC HÀM TIỆN ÍCH KHÁC (GIỮ NGUYÊN BẢN CŨ)
+// CÁC HÀM TIỆN ÍCH KHÁC
 // ==========================================
-
 function openLookupModal() { 
     document.getElementById('lookupModal').style.display = 'flex'; 
     document.getElementById('searchInput').value = "";
@@ -387,7 +386,7 @@ function addRow() {
     const newRowData = {
         "STT": editingIndex !== -1 ? dataList[editingIndex]["STT"] : dataList.length + 1, "TRẠNG THÁI ĐẨY": "Waiting", 
         "SỐ CCCD": fields[0].value.trim(), "TÊN SINH VIÊN": fields[1].value.trim(), "NGÀY SINH": formatVnDate(fields[2].value),
-        "NGÀNH": fields[3].value, "KHÓA": fields[4].value, "ĐỐI TƯỢNG ƯU TIÊN": fields[5].value, "KHU VỰC ƯU TIÊN": fields[6].value,
+        "NGÀNH": fields[3].value, "KHÓA": fields[4].value, "ĐỐI TƯỢ ƯU TIÊN": fields[5].value, "KHU VỰC ƯU TIÊN": fields[6].value,
         "ĐỐI TƯỢNG ĐẦU VÀO": fields[7].value, "NĂM XÉT TUYỂN": fields[8].value, "HỆ ĐÀO TẠO": fields[9].value, "HÌNH THỨC ĐÀO TẠO": fields[10].value,
         "LINK HỒ SƠ": document.getElementById('link_folder').value.trim(),
         "PHIẾU ĐĂNG KÝ DỰ TUYỂN": getChkVal('doc_phieu_dk'), "SƠ YẾU LÝ LỊCH": getChkVal('doc_syll'), "BẢN SAO CCCD": getChkVal('doc_cccd'), "BẢN SAO GIẤY KHAI SINH": getChkVal('doc_khaisinh'), "ẢNH THẺ": getChkVal('doc_anhthe'),
