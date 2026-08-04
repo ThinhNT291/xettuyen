@@ -4,6 +4,7 @@ let lookupData = [];
 
 const sysSep = (1.1).toLocaleString().substring(1, 2);
 const wrongSep = sysSep === '.' ? ',' : '.';
+
 // ==========================================
 // BỘ MÁY XÉT DUYỆT 2 PHA (HỒ SƠ & ĐIỂM)
 // ==========================================
@@ -93,7 +94,8 @@ function autoCheckAdmission() {
         iconEl.innerHTML = '🔴'; titleEl.innerHTML = "KHÔNG ĐỦ ĐIỀU KIỆN SƠ TUYỂN"; titleEl.style.color = '#721c24';
     } else if (diemStatus === "FAIL") {
         box.style.backgroundColor = '#f8d7da'; box.style.borderColor = '#f5c6cb';
-        iconEl.innerHTML = '🔴'; titleEl.innerHTML = "KHÔNG ĐẠT YÊU CẦU ĐIỂM SỐ"; titleEl.style.color = '#721c24';
+        // YÊU CẦU 2: Đổi cảnh báo KHÔNG ĐẠT YÊU CẦU ĐIỂM SỐ -> KHÔNG ĐẠT ĐIỂM CHUẨN
+        iconEl.innerHTML = '🔴'; titleEl.innerHTML = "KHÔNG ĐẠT ĐIỂM CHUẨN"; titleEl.style.color = '#721c24';
     } else if (hsStatus === "WARN" && diemStatus === "PASS") {
         box.style.backgroundColor = '#fff3cd'; box.style.borderColor = '#ffeeba';
         iconEl.innerHTML = '🟡'; titleEl.innerHTML = "ĐẠT SƠ TUYỂN (CẦN BỔ SUNG HỒ SƠ)"; titleEl.style.color = '#856404';
@@ -298,8 +300,18 @@ function editRow(index) {
     setChk('doc_gcn_gdpt', "GCN HOÀN THÀNH CT GDPT"); setChk('doc_bang_cd', "BẰNG CAO ĐẲNG"); setChk('doc_diem_cd', "BẢNG ĐIỂM CAO ĐẲNG"); setChk('doc_bang_dh', "BẰNG ĐẠI HỌC"); setChk('doc_diem_dh', "BẢNG ĐIỂM ĐẠI HỌC");
     
     const setScore = (id, key) => { document.getElementById(id).value = row[key] ? row[key].replace('.', sysSep) : ""; };
-    ['toan', 'vatli', 'hoahoc', 'sinhhoc', 'nguvan', 'lichsu', 'dialy', 'tienganh', 'tiengtrung', 'tinhoc', 'gdktpl'].forEach(m => setScore(`diem_${m}`, m.toUpperCase()));
-    setScore('diem_tb_he4', "ĐIỂM TB TOÀN KHÓA HỆ 4"); setScore('diem_tb_he10', "ĐIỂM TB TOÀN KHÓA HỆ 10"); setScore('diem_cong', "ĐIỂM CỘNG");
+    
+    // YÊU CẦU 3: CẬP NHẬT MAPPING ĐỂ LẤY ĐÚNG KEY CÓ DẤU TRONG DATA
+    const scoreMapping = {
+        'diem_toan': "TOÁN", 'diem_vatli': "VẬT LÍ", 'diem_hoahoc': "HÓA HỌC", 'diem_sinhhoc': "SINH HỌC",
+        'diem_nguvan': "NGỮ VĂN", 'diem_lichsu': "LỊCH SỬ", 'diem_dialy': "ĐỊA LÝ", 'diem_tienganh': "TIẾNG ANH",
+        'diem_tiengtrung': "TIẾNG TRUNG", 'diem_tinhoc': "TIN HỌC", 'diem_gdktpl': "GDKTPL",
+        'diem_tb_he4': "ĐIỂM TB TOÀN KHÓA HỆ 4", 'diem_tb_he10': "ĐIỂM TB TOÀN KHÓA HỆ 10", 'diem_cong': "ĐIỂM CỘNG"
+    };
+
+    for (const [id, key] of Object.entries(scoreMapping)) {
+        setScore(id, key);
+    }
     
     editingIndex = index;
     const btnAdd = document.getElementById('btnAddUpdate'); btnAdd.innerHTML = "💾 Cập nhật thay đổi"; btnAdd.style.backgroundColor = "#f57f17"; 
@@ -320,7 +332,7 @@ function addRow() {
     const newRowData = {
         "STT": editingIndex !== -1 ? dataList[editingIndex]["STT"] : dataList.length + 1, "TRẠNG THÁI ĐẨY": "Waiting", 
         "SỐ CCCD": fields[0].value.trim(), "TÊN SINH VIÊN": fields[1].value.trim(), "NGÀY SINH": formatVnDate(fields[2].value),
-        "NGÀNH": fields[3].value, "KHÓA": fields[4].value, "ĐỐI TƯỢ ƯU TIÊN": fields[5].value, "KHU VỰC ƯU TIÊN": fields[6].value,
+        "NGÀNH": fields[3].value, "KHÓA": fields[4].value, "ĐỐI TƯỢNG ƯU TIÊN": fields[5].value, "KHU VỰC ƯU TIÊN": fields[6].value,
         "ĐỐI TƯỢNG ĐẦU VÀO": fields[7].value, "NĂM XÉT TUYỂN": fields[8].value, "HỆ ĐÀO TẠO": fields[9].value, "HÌNH THỨC ĐÀO TẠO": fields[10].value,
         "LINK HỒ SƠ": document.getElementById('link_folder').value.trim(),
         "PHIẾU ĐĂNG KÝ DỰ TUYỂN": getChkVal('doc_phieu_dk'), "SƠ YẾU LÝ LỊCH": getChkVal('doc_syll'), "BẢN SAO CCCD": getChkVal('doc_cccd'), "BẢN SAO GIẤY KHAI SINH": getChkVal('doc_khaisinh'), "ẢNH THẺ": getChkVal('doc_anhthe'),
@@ -376,10 +388,45 @@ function getNowTimestampAsText() {
     return `'${pad(now.getDate())}/${pad(now.getMonth()+1)}/${now.getFullYear()} ${pad(now.getHours())}:${pad(now.getMinutes())}:${pad(now.getSeconds())}`;
 }
 
+// YÊU CẦU 1: THÊM CƠ CHẾ CẢNH BÁO POPUP TRƯỚC KHI GỬI NẾU THIẾU TIÊN QUYẾT
 async function sendToCloud() {
     const pendingList = dataList.filter(row => row["TRẠNG THÁI ĐẨY"] === "Waiting");
-    if (pendingList.length === 0) { showAlert("Không có hồ sơ mới nào để đẩy lên hệ thống!\n\n👉 Tất cả dữ liệu hiện tại đều đã được tải lên thành công.", "⚠️ KHÔNG CÓ DỮ LIỆU MỚI", true); return; }
+    if (pendingList.length === 0) { 
+        showAlert("Không có hồ sơ mới nào để đẩy lên hệ thống!\n\n👉 Tất cả dữ liệu hiện tại đều đã được tải lên thành công.", "⚠️ KHÔNG CÓ DỮ LIỆU MỚI", true); 
+        return; 
+    }
 
+    // Quét đối chiếu thời gian thực để tìm hồ sơ thiếu tiên quyết
+    let warnings = [];
+    pendingList.forEach(row => {
+        const dt = row["ĐỐI TƯỢNG ĐẦU VÀO"];
+        const dsTienQuyet = DICT_HO_SO.tien_quyet[dt] || [];
+        let missingDocs = [];
+        
+        dsTienQuyet.forEach(doc => {
+            // Đối chiếu động thông qua tên in hoa vì addRow đang ghi nhãn là tên in hoa
+            if (row[doc.name.toUpperCase()] !== "TRUE") {
+                missingDocs.push(doc.name);
+            }
+        });
+
+        if (missingDocs.length > 0) {
+            warnings.push(`- Hồ sơ của [${row["TÊN SINH VIÊN"]}] đang thiếu HS tiên quyết: ${missingDocs.join(', ')}`);
+        }
+    });
+
+    if (warnings.length > 0) {
+        // Tích hợp chuỗi cảnh báo vào popup confirmation
+        showConfirm(warnings.join('\n') + '\n\nBạn chắc chắn muốn tải lên không?', () => {
+            executeUploadToCloud(pendingList);
+        });
+    } else {
+        executeUploadToCloud(pendingList);
+    }
+}
+
+// Hàm thực thi riêng biệt tách ra để gọi sau khi ấn Yes ở popup
+async function executeUploadToCloud(pendingList) {
     const btnPush = document.getElementById('btnPush'); const originalText = btnPush.innerHTML;
     btnPush.disabled = true; btnPush.innerHTML = "⏳ Processing...";
     document.getElementById('statusBar').innerText = `⏳ Đang tải ${pendingList.length} hồ sơ mới lên hệ thống...`;
