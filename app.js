@@ -4,8 +4,9 @@ let lookupData = [];
 
 const sysSep = (1.1).toLocaleString().substring(1, 2);
 const wrongSep = sysSep === '.' ? ',' : '.';
+
 // ==========================================
-// BỘ MÁY XÉT DUYỆT 2 PHA (HỒ SƠ & ĐIỂM)
+// BỘ MÁY XÉT DUYỆT 2 PHA (HỒ SƠ & ĐIỂM) - CẬP NHẬT TRẠNG THÁI MỀM
 // ==========================================
 function autoCheckAdmission() {
     const nganh = document.getElementById('nganh').value;
@@ -26,7 +27,7 @@ function autoCheckAdmission() {
 
     if (missingTienQuyet.length > 0) {
         hsStatus = "FAIL"; hsColor = "#721c24";
-        hsMsg = `❌ Trạng thái hồ sơ: <b>KHÔNG ĐỦ ĐIỀU KIỆN</b>. Bắt buộc bổ sung hồ sơ tiên quyết: <i>${missingTienQuyet.join(', ')}</i>.`;
+        hsMsg = `❌ Trạng thái hồ sơ: <b>CHƯA ĐỦ ĐIỀU KIỆN (THIẾU TIÊN QUYẾT)</b>. Hồ sơ thiếu: <i>${missingTienQuyet.join(', ')}</i>.`;
     } else if (missingChung.length > 0) {
         hsStatus = "WARN"; hsColor = "#856404";
         hsMsg = `⚠️ Trạng thái hồ sơ: <b>HỢP LỆ (NỢ HỒ SƠ CHUNG)</b>. Yêu cầu bổ sung: <i>${missingChung.join(', ')}</i>.`;
@@ -90,7 +91,7 @@ function autoCheckAdmission() {
 
     if (hsStatus === "FAIL") {
         box.style.backgroundColor = '#f8d7da'; box.style.borderColor = '#f5c6cb';
-        iconEl.innerHTML = '🔴'; titleEl.innerHTML = "KHÔNG ĐỦ ĐIỀU KIỆN SƠ TUYỂN"; titleEl.style.color = '#721c24';
+        iconEl.innerHTML = '⚠️'; titleEl.innerHTML = "CẢNH BÁO: THIẾU HỒ SƠ TIÊN QUYẾT"; titleEl.style.color = '#721c24';
     } else if (diemStatus === "FAIL") {
         box.style.backgroundColor = '#f8d7da'; box.style.borderColor = '#f5c6cb';
         iconEl.innerHTML = '🔴'; titleEl.innerHTML = "KHÔNG ĐẠT YÊU CẦU ĐIỂM SỐ"; titleEl.style.color = '#721c24';
@@ -285,7 +286,7 @@ function editRow(index) {
     document.getElementById('cccd').value = row["SỐ CCCD"]; document.getElementById('hoten').value = row["TÊN SINH VIÊN"];
     const dateParts = row["NGÀY SINH"].split('/'); if(dateParts.length === 3) document.getElementById('ngaysinh').value = `${dateParts[2]}-${dateParts[1]}-${dateParts[0]}`;
     document.getElementById('nganh').value = row["NGÀNH"]; document.getElementById('khoa').value = row["KHÓA"];
-    document.getElementById('doituonguutien').value = row["ĐỐI TƯỢNG ƯU TIÊN"]; document.getElementById('khuvucuutien').value = row["KHU VỰC ƯU TIÊN"];
+    document.getElementById('doituonguutien').value = row["ĐỐI TƯỢNG ƯU TIÊN"]; document.getElementById('khuvucuutien').value = row["KV 01"] || row["KHU VỰC ƯU TIÊN"];
     document.getElementById('doituongdauvao').value = row["ĐỐI TƯỢNG ĐẦU VÀO"]; handleDoiTuongChange(); 
     document.getElementById('namtt').value = row["NĂM XÉT TUYỂN"]; document.getElementById('hedaotao').value = row["HỆ ĐÀO TẠO"];
     document.getElementById('htdaotao').value = row["HÌNH THỨC ĐÀO TẠO"]; document.getElementById('link_folder').value = row["LINK HỒ SƠ"] || "";
@@ -317,11 +318,32 @@ function addRow() {
         }
     }
 
+    // Tự động quét kiểm tra thiếu hồ sơ tiên quyết hay không
+    const doiTuongDauVao = document.getElementById('doituongdauvao').value;
+    let missingTienQuyet = [];
+    const dsTienQuyet = DICT_HO_SO.tien_quyet[doiTuongDauVao] || [];
+    dsTienQuyet.forEach(doc => { if (!document.getElementById(doc.id).checked) missingTienQuyet.push(doc.name); });
+    
+    let trangThaiHoSo = "Đủ hồ sơ / Hợp lệ";
+    if (missingTienQuyet.length > 0) {
+        trangThaiHoSo = "Thiếu hồ sơ tiên quyết";
+    }
+
     const newRowData = {
-        "STT": editingIndex !== -1 ? dataList[editingIndex]["STT"] : dataList.length + 1, "TRẠNG THÁI ĐẨY": "Waiting", 
-        "SỐ CCCD": fields[0].value.trim(), "TÊN SINH VIÊN": fields[1].value.trim(), "NGÀY SINH": formatVnDate(fields[2].value),
-        "NGÀNH": fields[3].value, "KHÓA": fields[4].value, "ĐỐI TƯỢ ƯU TIÊN": fields[5].value, "KHU VỰC ƯU TIÊN": fields[6].value,
-        "ĐỐI TƯỢNG ĐẦU VÀO": fields[7].value, "NĂM XÉT TUYỂN": fields[8].value, "HỆ ĐÀO TẠO": fields[9].value, "HÌNH THỨC ĐÀO TẠO": fields[10].value,
+        "STT": editingIndex !== -1 ? dataList[editingIndex]["STT"] : dataList.length + 1, 
+        "TRẠNG THÁI ĐẨY": "Waiting", 
+        "HỒ SƠ": trangThaiHoSo, // Gắn nhãn trạng thái hồ sơ đồng bộ qua Web2
+        "SỐ CCCD": fields[0].value.trim(), 
+        "TÊN SINH VIÊN": fields[1].value.trim(), 
+        "NGÀY SINH": formatVnDate(fields[2].value),
+        "NGÀNH": fields[3].value, 
+        "KHÓA": fields[4].value, 
+        "ĐỐI TƯỢNG ƯU TIÊN": fields[5].value, 
+        "KHU VỰC ƯU TIÊN": fields[6].value,
+        "ĐỐI TƯỢNG ĐẦU VÀO": fields[7].value, 
+        "NĂM XÉT TUYỂN": fields[8].value, 
+        "HỆ ĐÀO TẠO": fields[9].value, 
+        "HÌNH THỨC ĐÀO TẠO": fields[10].value,
         "LINK HỒ SƠ": document.getElementById('link_folder').value.trim(),
         "PHIẾU ĐĂNG KÝ DỰ TUYỂN": getChkVal('doc_phieu_dk'), "SƠ YẾU LÝ LỊCH": getChkVal('doc_syll'), "BẢN SAO CCCD": getChkVal('doc_cccd'), "BẢN SAO GIẤY KHAI SINH": getChkVal('doc_khaisinh'), "ẢNH THẺ": getChkVal('doc_anhthe'),
         "BẢN SAO BẰNG THPT/GIẤY BÁO ĐIỂM": getChkVal('doc_bang_thpt'), "BẢN SAO HỌC BẠ THPT": getChkVal('doc_hocba_thpt'), "BẢN SAO BẰNG TRUNG CẤP": getChkVal('doc_bang_tc'), "BẢNG ĐIỂM TRUNG CẤP": getChkVal('doc_diem_tc'),
@@ -380,6 +402,22 @@ async function sendToCloud() {
     const pendingList = dataList.filter(row => row["TRẠNG THÁI ĐẨY"] === "Waiting");
     if (pendingList.length === 0) { showAlert("Không có hồ sơ mới nào để đẩy lên hệ thống!\n\n👉 Tất cả dữ liệu hiện tại đều đã được tải lên thành công.", "⚠️ KHÔNG CÓ DỮ LIỆU MỚI", true); return; }
 
+    // Kiểm tra xem trong danh sách chờ gửi có hồ sơ nào thiếu tiên quyết không
+    const missingDocsList = pendingList.filter(row => row["HỒ SƠ"] && row["HỒ SƠ"].includes("Thiếu"));
+
+    if (missingDocsList.length > 0) {
+        // Hiện popup Yes/No linh hoạt theo yêu cầu của anh
+        showConfirm(
+            `⚠️ CẢNH BÁO: Trong số ${pendingList.length} hồ sơ chuẩn bị đẩy lên, có ${missingDocsList.length} hồ sơ đang bị THIẾU HỒ SƠ TIÊN QUYẾT.\n\nCác hồ sơ này sẽ được đánh dấu trạng thái "Thiếu hồ sơ tiên quyết" trên hệ thống quản trị (Web2).\n\nBạn có chắc chắn muốn tiếp tục upload không?`,
+            () => { executeUploadToCloud(pendingList); }
+        );
+    } else {
+        executeUploadToCloud(pendingList);
+    }
+}
+
+// Hàm thực thi tiến trình gửi fetch API ngầm sau khi đã xác nhận qua popup
+async function executeUploadToCloud(pendingList) {
     const btnPush = document.getElementById('btnPush'); const originalText = btnPush.innerHTML;
     btnPush.disabled = true; btnPush.innerHTML = "⏳ Processing...";
     document.getElementById('statusBar').innerText = `⏳ Đang tải ${pendingList.length} hồ sơ mới lên hệ thống...`;
