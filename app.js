@@ -8,46 +8,68 @@ const wrongSep = sysSep === '.' ? ',' : '.';
 // ==========================================
 // TÍCH HỢP AI ĐỌC CCCD (FPT OCR)
 // ==========================================
+// ==========================================
+// TÍCH HỢP GEMINI AI ĐỌC CCCD (VIA BACKEND PROXY)
+// ==========================================
+function fileToBase64(file) {
+    return new Promise((resolve, reject) => {
+        const reader = new FileReader();
+        reader.readAsDataURL(file);
+        reader.onload = () => resolve(reader.result.split(',')[1]); 
+        reader.onerror = error => reject(error);
+    });
+}
+
 async function processCCCD(input) {
     if (!input.files || input.files.length === 0) return;
     const file = input.files[0];
     
-    showAlert("Đang gửi ảnh cho AI phân tích. Quá trình này mất khoảng 2-5 giây...", "⏳ ĐANG XỬ LÝ ẢNH", false);
-    
-    if (!API_KEY_FPT || API_KEY_FPT === "curl -X POST https://api.fpt.ai/vision/idr/vnm -H "api-key: Kb14vG3ftfTc9mumbExPNBA51687IHLk" -F "image=@"
-") {
-        showAlert("Chưa cấu hình API", "❌ LỖI CẤU HÌNH", true);
-        input.value = ""; return;
-    }
-
-    const formData = new FormData();
-    formData.append('image', file);
+    showAlert("🤖 Đang truyền ảnh lên máy chủ mã hóa để phân tích. Vui lòng chờ 3-5 giây...", "⏳ AI ĐANG XỬ LÝ", false);
 
     try {
-        const response = await fetch('https://api.fpt.ai/vision/idr/vnm', {
+        const base64Image = await fileToBase64(file);
+
+        // Gửi gói hàng (có gán nhãn action: "ocr") lên Google Apps Script
+        const response = await fetch(WEB_APP_URL, {
             method: 'POST',
-            headers: { 'api-key': API_KEY_FPT },
-            body: formData
+            headers: { 'Content-Type': 'text/plain;charset=utf-8' },
+            body: JSON.stringify({
+                action: "ocr",
+                mimeType: file.type,
+                base64Image: base64Image
+            })
         });
-        const data = await response.json();
-        
-        if (data.errorCode === 0 && data.data.length > 0) {
-            const info = data.data[0];
-            if (info.id) document.getElementById('cccd').value = info.id;
-            if (info.name) document.getElementById('hoten').value = info.name;
-            if (info.dob) {
-                const parts = info.dob.split('/');
-                if (parts.length === 3) document.getElementById('ngaysinh').value = `${parts[2]}-${parts[1]}-${parts[0]}`;
+
+        const serverRes = await response.json();
+
+        if (serverRes.status === "success" && serverRes.data.candidates) {
+            let rawText = serverRes.data.candidates[0].content.parts[0].text.trim();
+            rawText = rawText.replace(/```json|```/g, "").trim();
+            const info = JSON.parse(rawText);
+
+            if (info.error) {
+                showAlert("AI không đọc được thông tin. Vui lòng chụp ảnh rõ nét hơn, tránh lóa sáng!", "❌ KHÔNG ĐỌC ĐƯỢC ẢNH", true);
+            } else {
+                if (info.id) document.getElementById('cccd').value = info.id;
+                if (info.name) document.getElementById('hoten').value = info.name;
+                
+                if (info.dob && info.dob.includes('/')) {
+                    const parts = info.dob.split('/');
+                    if (parts.length === 3) {
+                        document.getElementById('ngaysinh').value = `${parts[2]}-${parts[1].padStart(2, '0')}-${parts[0].padStart(2, '0')}`;
+                    }
+                }
+                document.getElementById('customModal').style.display = 'none';
+                showAlert(`Gemini AI đã trích xuất an toàn:\n👉 Số CCCD: ${info.id}\n👉 Họ tên: ${info.name}\n👉 Ngày sinh: ${info.dob}`, "🎉 AI QUÉT THÀNH CÔNG", false);
             }
-            document.getElementById('customModal').style.display = 'none'; 
-            showAlert("Đã trích xuất thành công dữ liệu từ hình ảnh!", "✅ AI QUÉT THÀNH CÔNG", false);
         } else {
-            showAlert("AI không nhận diện được thông tin. Vui lòng chụp ảnh rõ nét hơn, không bị lóa sáng!", "❌ LỖI NHẬN DIỆN", true);
+            showAlert("Máy chủ AI từ chối phản hồi. Vui lòng thử lại sau!", "❌ LỖI AI", true);
         }
+
     } catch (error) {
-        showAlert("Lỗi kết nối đến máy chủ AI. Vui lòng kiểm tra mạng!", "❌ LỖI KẾT NỐI", true);
+        showAlert(`Mất kết nối với máy chủ bảo mật. Lỗi: ${error.message}`, "❌ LỖI ĐƯỜNG TRUYỀN", true);
     } finally {
-        input.value = ""; // Reset input 
+        input.value = ""; 
     }
 }
 
