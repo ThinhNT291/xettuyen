@@ -1,7 +1,7 @@
 // ==========================================
 // CẤU HÌNH KẾT NỐI AI VÀ GOOGLE SHEETS
 // ==========================================
-const API_KEY_FPT = "curl -X POST https://api.fpt.ai/vision/idr/vnm -H "api-key: Kb14vG3ftfTc9mumbExPNBA51687IHLk" -F "image=@""; 
+const API_KEY_FPT = "Kb14vG3ftfTc9mumbExPNBA51687IHLk"; 
 const WEB_APP_URL = "https://script.google.com/macros/s/AKfycbxzIuSm2Gn1tYzEv0A1GXLF72QLQl2ZbGjk1NcGymGLrE1vd5Hhf1vuF-5EqHlgU3k/exec";
 const KV_CSV_URL = "https://docs.google.com/spreadsheets/d/e/2PACX-1vSrXGUBLFQJJy2lIJ_O1u_8iHupsFVt8BPYmLzgAMPI0E3hecCanmaUJ831RvgF-A/pub?gid=1073726209&single=true&output=csv";
 
