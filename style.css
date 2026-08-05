@@ -142,3 +142,11 @@ tr:nth-child(even) { background-color: #f9f9f9; }
         .btn-modal-cancel { background: #757575; color: #fff; }
         .btn-modal-cancel:hover { background: #616161; }
     </style>
+/* Nút hiển thị cho trạng thái Mới bổ sung (Màu xanh dương) */
+.btn-review.update-state { 
+    background: #0288d1; 
+    color: white; 
+}
+.btn-review.update-state:hover { 
+    background: #0277bd; 
+}
