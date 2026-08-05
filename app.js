@@ -2,7 +2,7 @@
 // MÃ SCRIPT THỰC HIỆN KIỂM TRA CCCD VÀ ĐIỀN LẠI DỮ LIỆU CŨ
 // ==========================================
 // NHỚ DÁN LẠI CÁI LINK API CHECK_ID CỦA ÔNG VÀO DÒNG DƯỚI NÀY:
-const API_CHECK_ID = "DÁN_LINK_API_CHECKID_VÀO_ĐÂY";
+const API_CHECK_ID = "https://script.google.com/macros/s/AKfycbx7zJeNwgHvfiACUBL7JBWto6iOaZFfeC12VpN6EYHBz_wZ0OGK0cIRlCSBHjs7KUiz/exec";
 
 async function kiemTraCCCD() {
     const cccd = document.getElementById('cccd').value.trim();
