@@ -1,6 +1,8 @@
 let dataList = [];
 let editingIndex = -1; 
 let lookupData = [];
+// THÊM BIẾN TOÀN CỤC ĐỂ THEO DÕI HÀNH ĐỘNG
+let currentAction = "INSERT"; 
 
 const sysSep = (1.1).toLocaleString().substring(1, 2);
 const wrongSep = sysSep === '.' ? ',' : '.';
@@ -94,7 +96,6 @@ function autoCheckAdmission() {
         iconEl.innerHTML = '🔴'; titleEl.innerHTML = "KHÔNG ĐỦ ĐIỀU KIỆN SƠ TUYỂN"; titleEl.style.color = '#721c24';
     } else if (diemStatus === "FAIL") {
         box.style.backgroundColor = '#f8d7da'; box.style.borderColor = '#f5c6cb';
-        // YÊU CẦU 2: Đổi cảnh báo KHÔNG ĐẠT YÊU CẦU ĐIỂM SỐ -> KHÔNG ĐẠT ĐIỂM CHUẨN
         iconEl.innerHTML = '🔴'; titleEl.innerHTML = "KHÔNG ĐẠT ĐIỂM CHUẨN"; titleEl.style.color = '#721c24';
     } else if (hsStatus === "WARN" && diemStatus === "PASS") {
         box.style.backgroundColor = '#fff3cd'; box.style.borderColor = '#ffeeba';
@@ -175,7 +176,10 @@ function searchLookupTable() {
     renderLookupTable(filtered);
 }
 
-function showAlert(message, title = "⚠️ THÔNG BÁO HỆ THỐNG", isWarn = true, onCloseCallback = null) {
+// ==========================================
+// CẬP NHẬT: SHOW ALERT VỚI TIÊU ĐỀ TỰ CHỌN
+// ==========================================
+function showAlert(message, title = "Hệ thống nhập liệu tuyển sinh", isWarn = true, onCloseCallback = null) {
     const modal = document.getElementById('customModal');
     document.getElementById('modalHeader').className = isWarn ? 'modal-header warn' : 'modal-header info';
     document.getElementById('modalHeader').innerHTML = isWarn ? `<span>⚠️</span> ${title}` : `<span>💡</span> ${title}`;
@@ -187,16 +191,50 @@ function showAlert(message, title = "⚠️ THÔNG BÁO HỆ THỐNG", isWarn = 
     document.getElementById('btnModalOk').onclick = () => { modal.style.display = 'none'; if (onCloseCallback) onCloseCallback(); };
 }
 
-function showConfirm(message, onYesCallback) {
+// CẬP NHẬT: THÊM CÁC HÀM XÁC NHẬN (CONFIRM) TÙY CHỈNH
+function showConfirm(message, onYesCallback, title = "Hệ thống nhập liệu tuyển sinh") {
     const modal = document.getElementById('customModal');
     document.getElementById('modalHeader').className = 'modal-header warn';
-    document.getElementById('modalHeader').innerHTML = `<span>❓</span> XÁC NHẬN THAO TÁC`;
+    document.getElementById('modalHeader').innerHTML = `<span>❓</span> ${title}`;
     document.getElementById('modalBody').innerText = message;
     document.getElementById('modalFooter').innerHTML = `<button class="btn-modal-cancel" id="btnModalCancel">Hủy bỏ</button><button class="btn-modal-ok" id="btnModalYes">Đồng ý</button>`;
     modal.style.display = 'flex';
 
     document.getElementById('btnModalCancel').onclick = () => { modal.style.display = 'none'; };
     document.getElementById('btnModalYes').onclick = () => { modal.style.display = 'none'; if (onYesCallback) onYesCallback(); };
+}
+
+function showUpdateOrInsertConfirm(message, dataInfo, onUpdateCallback, onInsertCallback) {
+    const modal = document.getElementById('customModal');
+    document.getElementById('modalHeader').className = 'modal-header info';
+    document.getElementById('modalHeader').innerHTML = `<span>💡</span> Thông báo từ Hệ thống nhập liệu tuyển sinh`;
+    
+    // Tạo cấu trúc hiển thị dữ liệu
+    let contentHtml = `<p>${message}</p>`;
+    contentHtml += `<div style="background:#f9f9f9; padding: 10px; margin: 10px 0; border: 1px solid #ddd; font-size: 13px;">`;
+    dataInfo.forEach((hs, idx) => {
+        contentHtml += `<b>Hồ sơ ${idx + 1}:</b><br/>`;
+        contentHtml += `- Họ tên: ${hs.hoTen}<br/>`;
+        contentHtml += `- Ngành: ${hs.nganh}<br/>`;
+        contentHtml += `- Ngày nộp: ${hs.thoiGian.split(' ')[0]}<br/>`;
+        contentHtml += `- Trạng thái: <b>${hs.trangThai}</b><br/><br/>`;
+    });
+    contentHtml += `</div>`;
+    contentHtml += `<p style="font-size: 13px;">👉 <b>HƯỚNG DẪN XỬ LÝ:</b><br/>`;
+    contentHtml += `1. Nếu muốn nộp <b>BỔ SUNG HỒ SƠ</b>: Chọn "Cập nhật hồ sơ hiện tại".<br/>`;
+    contentHtml += `2. Nếu muốn nộp <b>THÊM NGÀNH MỚI</b>: Chọn "Thêm hồ sơ mới".</p>`;
+    
+    document.getElementById('modalBody').innerHTML = contentHtml;
+    document.getElementById('modalFooter').innerHTML = `
+        <button class="btn-modal-cancel" style="background: #0288d1; color: white;" id="btnModalInsert">Thêm hồ sơ mới</button>
+        <button class="btn-modal-ok" style="background: #f57c00;" id="btnModalUpdate">Cập nhật hồ sơ hiện tại</button>
+        <button class="btn-modal-cancel" id="btnModalCancelAction">Hủy bỏ</button>
+    `;
+    modal.style.display = 'flex';
+
+    document.getElementById('btnModalCancelAction').onclick = () => { modal.style.display = 'none'; };
+    document.getElementById('btnModalInsert').onclick = () => { modal.style.display = 'none'; if (onInsertCallback) onInsertCallback(); };
+    document.getElementById('btnModalUpdate').onclick = () => { modal.style.display = 'none'; if (onUpdateCallback) onUpdateCallback(); };
 }
 
 window.addEventListener('DOMContentLoaded', () => {
@@ -270,6 +308,7 @@ function clearForm() {
     document.querySelectorAll('.score-thpt-input, .score-other-input').forEach(el => el.value = '');
     document.getElementById('doc-placeholder').style.display = 'block'; document.getElementById('score-placeholder').style.display = 'block';
     document.getElementById('traffic-light-box').style.display = 'none';
+    currentAction = "INSERT"; // Trả lại hành động mặc định sau khi clear form
 }
 
 function cancelEdit() {
@@ -287,12 +326,15 @@ function editRow(index) {
     document.getElementById('cccd').value = row["SỐ CCCD"]; document.getElementById('hoten').value = row["TÊN SINH VIÊN"];
     const dateParts = row["NGÀY SINH"].split('/'); if(dateParts.length === 3) document.getElementById('ngaysinh').value = `${dateParts[2]}-${dateParts[1]}-${dateParts[0]}`;
     document.getElementById('nganh').value = row["NGÀNH"]; document.getElementById('khoa').value = row["KHÓA"];
-    document.getElementById('doituonguutien').value = row["ĐỐI TƯỢNG ƯU TIÊN"]; document.getElementById('khuvucuutien').value = row["KHU VỰC ƯU TIÊN"];
+    document.getElementById('doituonguutien').value = row["ĐỐI TƯỢ ƯU TIÊN"] || row["ĐỐI TƯỢNG ƯU TIÊN"]; document.getElementById('khuvucuutien').value = row["KHU VỰC ƯU TIÊN"];
     document.getElementById('doituongdauvao').value = row["ĐỐI TƯỢNG ĐẦU VÀO"]; handleDoiTuongChange(); 
     document.getElementById('namtt').value = row["NĂM XÉT TUYỂN"]; document.getElementById('hedaotao').value = row["HỆ ĐÀO TẠO"];
     document.getElementById('htdaotao').value = row["HÌNH THỨC ĐÀO TẠO"]; document.getElementById('link_folder').value = row["LINK HỒ SƠ"] || "";
     document.getElementById('giay_uutien').value = row["GIẤY TỜ ƯU TIÊN"] || "";
     
+    // Gán lại _Action cho dòng được sửa
+    currentAction = row["_Action"] || "INSERT";
+
     const setChk = (id, key) => { document.getElementById(id).checked = (row[key] === "TRUE"); };
     setChk('doc_phieu_dk', "PHIẾU ĐĂNG KÝ DỰ TUYỂN"); setChk('doc_syll', "SƠ YẾU LÝ LỊCH"); setChk('doc_cccd', "BẢN SAO CCCD"); setChk('doc_khaisinh', "BẢN SAO GIẤY KHAI SINH"); setChk('doc_anhthe', "ẢNH THẺ");
     setChk('doc_bang_thpt', "BẢN SAO BẰNG THPT/GIẤY BÁO ĐIỂM"); setChk('doc_hocba_thpt', "BẢN SAO HỌC BẠ THPT"); setChk('doc_bang_tc', "BẢN SAO BẰNG TRUNG CẤP"); setChk('doc_diem_tc', "BẢNG ĐIỂM TRUNG CẤP");
@@ -301,7 +343,6 @@ function editRow(index) {
     
     const setScore = (id, key) => { document.getElementById(id).value = row[key] ? row[key].replace('.', sysSep) : ""; };
     
-    // YÊU CẦU 3: CẬP NHẬT MAPPING ĐỂ LẤY ĐÚNG KEY CÓ DẤU TRONG DATA
     const scoreMapping = {
         'diem_toan': "TOÁN", 'diem_vatli': "VẬT LÍ", 'diem_hoahoc': "HÓA HỌC", 'diem_sinhhoc': "SINH HỌC",
         'diem_nguvan': "NGỮ VĂN", 'diem_lichsu': "LỊCH SỬ", 'diem_dialy': "ĐỊA LÝ", 'diem_tienganh': "TIẾNG ANH",
@@ -331,6 +372,7 @@ function addRow() {
 
     const newRowData = {
         "STT": editingIndex !== -1 ? dataList[editingIndex]["STT"] : dataList.length + 1, "TRẠNG THÁI ĐẨY": "Waiting", 
+        "_Action": currentAction, // <-- Gắn cờ hành động vào đây
         "SỐ CCCD": fields[0].value.trim(), "TÊN SINH VIÊN": fields[1].value.trim(), "NGÀY SINH": formatVnDate(fields[2].value),
         "NGÀNH": fields[3].value, "KHÓA": fields[4].value, "ĐỐI TƯỢNG ƯU TIÊN": fields[5].value, "KHU VỰC ƯU TIÊN": fields[6].value,
         "ĐỐI TƯỢNG ĐẦU VÀO": fields[7].value, "NĂM XÉT TUYỂN": fields[8].value, "HỆ ĐÀO TẠO": fields[9].value, "HÌNH THỨC ĐÀO TẠO": fields[10].value,
@@ -363,8 +405,10 @@ function renderTable() {
     const tbody = document.getElementById('tableBody'); tbody.innerHTML = '';
     dataList.forEach((row, index) => {
         const isUp = row["TRẠNG THÁI ĐẨY"] === "Uploaded";
+        // HIỂN THỊ ACTION ĐỂ NGƯỜI DÙNG DỄ NHÌN
+        const actionText = row["_Action"] === "UPDATE" ? '<span style="color:#f57c00;font-weight:bold;">[UPDATE]</span> ' : '';
         const tr = document.createElement('tr'); if (isUp) tr.className = "row-uploaded";
-        tr.innerHTML = `<td>${row["STT"]}</td><td class="${isUp ? 'status-done' : 'status-pending'}">${row["TRẠNG THÁI ĐẨY"]}</td><td><b>${row["SỐ CCCD"]}</b></td><td>${row["TÊN SINH VIÊN"]}</td><td>${row["NGÀY SINH"]}</td><td>${row["NGÀNH"]}</td><td>${row["KHÓA"]}</td><td>${row["ĐỐI TƯỢNG ƯU TIÊN"]}</td><td>${row["KHU VỰC ƯU TIÊN"]}</td><td>${row["ĐỐI TƯỢNG ĐẦU VÀO"]}</td><td>${row["NĂM XÉT TUYỂN"]}</td><td>${row["HỆ ĐÀO TẠO"]}</td><td>${row["HÌNH THỨC ĐÀO TẠO"]}</td>
+        tr.innerHTML = `<td>${row["STT"]}</td><td class="${isUp ? 'status-done' : 'status-pending'}">${row["TRẠNG THÁI ĐẨY"]}</td><td><b>${actionText}${row["SỐ CCCD"]}</b></td><td>${row["TÊN SINH VIÊN"]}</td><td>${row["NGÀY SINH"]}</td><td>${row["NGÀNH"]}</td><td>${row["KHÓA"]}</td><td>${row["ĐỐI TƯỢNG ƯU TIÊN"]}</td><td>${row["KHU VỰC ƯU TIÊN"]}</td><td>${row["ĐỐI TƯỢNG ĐẦU VÀO"]}</td><td>${row["NĂM XÉT TUYỂN"]}</td><td>${row["HỆ ĐÀO TẠO"]}</td><td>${row["HÌNH THỨC ĐÀO TẠO"]}</td>
             ${fmtLink(row["LINK HỒ SƠ"])}${fmtTick(row["PHIẾU ĐĂNG KÝ DỰ TUYỂN"])}${fmtTick(row["SƠ YẾU LÝ LỊCH"])}${fmtTick(row["BẢN SAO CCCD"])}${fmtTick(row["BẢN SAO GIẤY KHAI SINH"])}${fmtTick(row["ẢNH THẺ"])}${fmtTick(row["BẢN SAO BẰNG THPT/GIẤY BÁO ĐIỂM"])}${fmtTick(row["BẢN SAO HỌC BẠ THPT"])}${fmtTick(row["BẢN SAO BẰNG TRUNG CẤP"])}${fmtTick(row["BẢNG ĐIỂM TRUNG CẤP"])}${fmtTick(row["BẰNG THPT/GCN ĐỦ KL KTVH THPT"])}${fmtTick(row["BẢN SAO BẰNG TRUNG CẤP TRƯỚC 2022"])}${fmtTick(row["BẢNG ĐIỂM TRUNG CẤP TRƯỚC 2022"])}${fmtTick(row["GCN HOÀN THÀNH CT GDPT"])}${fmtTick(row["BẰNG CAO ĐẲNG"])}${fmtTick(row["BẢNG ĐIỂM CAO ĐẲNG"])}${fmtTick(row["BẰNG ĐẠI HỌC"])}${fmtTick(row["BẢNG ĐIỂM ĐẠI HỌC"])}
             <td>${row["GIẤY TỜ ƯU TIÊN"]}</td><td>${row["TOÁN"]}</td><td>${row["VẬT LÍ"]}</td><td>${row["HÓA HỌC"]}</td><td>${row["SINH HỌC"]}</td><td>${row["NGỮ VĂN"]}</td><td>${row["LỊCH SỬ"]}</td><td>${row["ĐỊA LÝ"]}</td><td>${row["TIẾNG ANH"]}</td><td>${row["TIẾNG TRUNG"]}</td><td>${row["TIN HỌC"]}</td><td>${row["GDKTPL"]}</td><td><b>${row["ĐIỂM TB TOÀN KHÓA HỆ 4"]}</b></td><td><b>${row["ĐIỂM TB TOÀN KHÓA HỆ 10"]}</b></td><td><b style="color:#d32f2f">${row["ĐIỂM CỘNG"]}</b></td>
             <td>${!isUp ? `<div style="display:flex;"><button class="btn-edit-row" onclick="editRow(${index})" ${editingIndex !== -1 ? 'disabled style="opacity:0.5; cursor:not-allowed;"' : ''}>✏️</button><button class="btn-delete-row" onclick="deleteRow(${index})" ${editingIndex !== -1 ? 'disabled style="opacity:0.5; cursor:not-allowed;"' : ''}>🗑️</button></div>` : ''}</td>`;
@@ -388,7 +432,6 @@ function getNowTimestampAsText() {
     return `'${pad(now.getDate())}/${pad(now.getMonth()+1)}/${now.getFullYear()} ${pad(now.getHours())}:${pad(now.getMinutes())}:${pad(now.getSeconds())}`;
 }
 
-// YÊU CẦU 1: THÊM CƠ CHẾ CẢNH BÁO POPUP TRƯỚC KHI GỬI NẾU THIẾU TIÊN QUYẾT
 async function sendToCloud() {
     const pendingList = dataList.filter(row => row["TRẠNG THÁI ĐẨY"] === "Waiting");
     if (pendingList.length === 0) { 
@@ -396,7 +439,6 @@ async function sendToCloud() {
         return; 
     }
 
-    // Quét đối chiếu thời gian thực để tìm hồ sơ thiếu tiên quyết
     let warnings = [];
     pendingList.forEach(row => {
         const dt = row["ĐỐI TƯỢNG ĐẦU VÀO"];
@@ -404,7 +446,6 @@ async function sendToCloud() {
         let missingDocs = [];
         
         dsTienQuyet.forEach(doc => {
-            // Đối chiếu động thông qua tên in hoa vì addRow đang ghi nhãn là tên in hoa
             if (row[doc.name.toUpperCase()] !== "TRUE") {
                 missingDocs.push(doc.name);
             }
@@ -416,7 +457,6 @@ async function sendToCloud() {
     });
 
     if (warnings.length > 0) {
-        // Tích hợp chuỗi cảnh báo vào popup confirmation
         showConfirm(warnings.join('\n') + '\n\nBạn chắc chắn muốn tải lên không?', () => {
             executeUploadToCloud(pendingList);
         });
@@ -425,7 +465,6 @@ async function sendToCloud() {
     }
 }
 
-// Hàm thực thi riêng biệt tách ra để gọi sau khi ấn Yes ở popup
 async function executeUploadToCloud(pendingList) {
     const btnPush = document.getElementById('btnPush'); const originalText = btnPush.innerHTML;
     btnPush.disabled = true; btnPush.innerHTML = "⏳ Processing...";
@@ -444,4 +483,59 @@ async function executeUploadToCloud(pendingList) {
         } else { showAlert(`Lỗi trả về từ máy chủ Google:\n👉 ${result.message}`, "❌ LỖI MÁY CHỦ", true); }
     } catch (error) { showAlert(`Không thể kết nối đến máy chủ. Vui lòng kiểm tra lại kết nối mạng của bạn!\n\n👉 Chi tiết lỗi: ${error}`, "❌ LỖI KẾT NỐI MẠNG", true); } 
     finally { btnPush.disabled = false; btnPush.innerHTML = originalText; }
+}
+
+// ==========================================
+// MÃ SCRIPT THỰC HIỆN KIỂM TRA CCCD (LIÊN KẾT HTML)
+// ==========================================
+const API_CHECK_ID = "DÁN_LINK_API_CHECKID_VÀO_ĐÂY";
+
+async function kiemTraCCCD() {
+    const cccd = document.getElementById('cccd').value.trim();
+    if (!cccd) { 
+        showAlert("⚠️ Vui lòng nhập Số CCCD trước khi bấm kiểm tra!", "Lỗi nhập liệu"); 
+        document.getElementById('cccd').focus();
+        return; 
+    }
+    
+    const btn = document.querySelector('button[onclick="kiemTraCCCD()"]');
+    const originalText = btn.innerText;
+    btn.innerText = "⏳ Đang quét..."; 
+    btn.disabled = true;
+
+    try {
+        const resp = await fetch(API_CHECK_ID, {
+            method: "POST",
+            headers: { "Content-Type": "text/plain;charset=utf-8" },
+            body: JSON.stringify({ cccd: cccd })
+        });
+        const result = await resp.json();
+        
+        if (result.status === "success") {
+            showUpdateOrInsertConfirm(
+                `⚠️ TÌM THẤY ${result.count} HỒ SƠ CỦA THÍ SINH NÀY TRÊN HỆ THỐNG:`,
+                result.data,
+                // Hành động Update (Cập nhật hồ sơ hiện tại)
+                () => {
+                    currentAction = "UPDATE";
+                    showAlert("Hệ thống đã ghi nhận. Hãy điền các thông tin và TICK THÊM vào các hồ sơ cần bổ sung, sau đó bấm Thêm vào danh sách.", "ĐÃ CHỌN CẬP NHẬT", false);
+                },
+                // Hành động Insert (Thêm hồ sơ mới)
+                () => {
+                    currentAction = "INSERT";
+                    showAlert("Vui lòng tiếp tục nhập liệu như một hồ sơ mới (Chọn ngành mới).", "ĐÃ CHỌN THÊM MỚI", false);
+                }
+            );
+        } else if (result.status === "not_found") {
+            currentAction = "INSERT";
+            showAlert("✅ Thí sinh mới tinh. Chưa có dữ liệu trên hệ thống. Tiếp tục nhập liệu bình thường!", "ĐÃ KIỂM TRA", false);
+        } else {
+            showAlert("❌ Lỗi từ máy chủ: " + result.message);
+        }
+    } catch (e) {
+        showAlert("❌ Lỗi kết nối kiểm tra mạng: " + e);
+    } finally {
+        btn.innerText = originalText; 
+        btn.disabled = false;
+    }
 }
