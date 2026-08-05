@@ -6,8 +6,8 @@
     <title>Hệ Thống Nhập Liệu Tuyển Sinh</title>
     <!-- GỌI FILE CSS LÀM ĐẸP VÀO ĐÂY -->
     <link rel="stylesheet" href="style.css">
-    
-    <script src="https://cdn.sheetjs.com/xlsx-latest/package/dist/xlsx.full.min.js"></script>
+   
+       <script src="https://cdn.sheetjs.com/xlsx-latest/package/dist/xlsx.full.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/PapaParse/5.4.1/papaparse.min.js"></script>
 </head>
 <body>
@@ -20,6 +20,8 @@
         <div class="form-group">
             <div style="display: flex; justify-content: space-between; align-items: flex-end; margin-bottom: 5px;">
                 <label for="cccd" style="margin-bottom: 0;">Số CCCD <span class="req">(*)</span>:</label> 
+                <!-- NÚT KIỂM TRA CCCD -->
+                <button type="button" class="btn-mini" style="background: #f57c00; margin-bottom: 0;" onclick="kiemTraCCCD()">🔍 Kiểm tra</button>
             </div>
             <input type="text" id="cccd" placeholder="Nhập 12 số CCCD" required>
         </div>
@@ -44,7 +46,7 @@
             </select>
         </div>
         <div class="form-group">
-            <label for="khoa">Khóa <span class="req">(*)</span>:</label>
+            <label for="khoa">Khóa<span class="req">(*)</span>:</label>
             <select id="khoa" required>
                 <option value="" disabled selected>-- Chọn --</option>
                 <option value="01">01</option>
@@ -338,10 +340,10 @@
     <div class="modal-box" style="max-width: 1100px; width: 95%; height: 85vh; display: flex; flex-direction: column;">
         <div class="modal-header info" style="flex-direction: column; align-items: flex-start; gap: 10px; padding: 15px 20px;">
             <div style="display: flex; justify-content: space-between; width: 100%;">
-                <span style="font-weight: bold; font-size: 16px; color: #006666;">🗺️ TRA CỨU KHU VỰC ƯU TIÊN</span>
-                <span style="cursor: pointer; font-size: 20px; line-height: 1; color: #d32f2f;" onclick="closeLookupModal()">✖</span>
+                <span style="font-weight: bold; font-size: 16px; color: #fff;">🗺️ TRA CỨU KHU VỰC ƯU TIÊN</span>
+                <span style="cursor: pointer; font-size: 20px; line-height: 1; color: #ffeb3b;" onclick="closeLookupModal()">✖</span>
             </div>
-            <input type="text" id="searchInput" placeholder="🔍 Nhập tên trường, xã, huyện để tìm kiếm..." style="width: 100%; max-width: 450px; padding: 8px 12px; border: 1px solid #ccc; border-radius: 4px; font-size: 14px;" onkeyup="searchLookupTable()">
+            <input type="text" id="searchInput" placeholder="🔍 Nhập tên trường, xã, huyện để tìm kiếm..." style="width: 100%; max-width: 450px; padding: 8px 12px; border: 1px solid #ccc; border-radius: 4px; font-size: 14px; color: #333;" onkeyup="searchLookupTable()">
         </div>
         <div class="modal-body" style="flex: 1; padding: 0; overflow: auto; background: #f9f9f9;">
             <div id="lookupContent" style="padding: 15px;">
@@ -351,9 +353,9 @@
     </div>
 </div>
 
-<!-- GỌI SCRIPT NGOÀI (TĂNG PHIÊN BẢN LÊN v=5 ĐỂ ÉP TRÌNH DUYỆT XÓA CACHE CŨ) -->
-<script src="data_config.js?v=8"></script>
-<script src="app.js?v=8"></script>
+<!-- GỌI SCRIPT (TĂNG PHIÊN BẢN LÊN v=10 ĐỂ ÉP TRÌNH DUYỆT XÓA CACHE CŨ) -->
+<script src="data_config.js?v=10"></script>
+<script src="app.js?v=10"></script>
 
 </body>
 </html>
