@@ -500,14 +500,14 @@ const API_CHECK_ID = "https://script.google.com/macros/s/AKfycbx7zJeNwgHvfiACUBL
 async function kiemTraCCCD() {
     const cccd = document.getElementById('cccd').value.trim();
     if (!cccd) { 
-        showAlert("⚠️ Vui lòng nhập Số CCCD trước khi bấm kiểm tra!", "LỖI NHẬP LIỆU"); 
+        showAlert("⚠️ Nhập Số CCCD trước khi bấm kiểm tra!", "LỖI NHẬP LIỆU"); 
         document.getElementById('cccd').focus();
         return; 
     }
     
     const btn = document.querySelector('button[onclick="kiemTraCCCD()"]');
     const originalText = btn.innerText;
-    btn.innerText = "⏳ Đang quét..."; 
+    btn.innerText = "⏳ Checking..."; 
     btn.disabled = true;
 
     try {
@@ -525,16 +525,16 @@ async function kiemTraCCCD() {
         } catch (parseError) {
             console.error("Lỗi parse JSON:", textResp);
             if (textResp.includes("Authorization") || textResp.includes("sign in")) {
-                showAlert("Google đang chặn quyền truy cập. Bạn hãy kiểm tra lại mã GAS CheckID đã cấp quyền và Deploy với quyền 'Who has access: Anyone' nhé!", "❌ LỖI PHÂN QUYỀN API");
+                showAlert("Server blocked !", "❌ LỖI");
             } else {
-                showAlert("Link API không hợp lệ hoặc máy chủ trả về trang web thay vì dữ liệu. Vui lòng kiểm tra lại link API (phải có đuôi /exec).", "❌ LỖI API");
+                showAlert("/exec error.", "❌ LỖI API");
             }
             return;
         }
         
         if (result.status === "success") {
             showUpdateOrInsertConfirm(
-                `⚠️ TÌM THẤY ${result.count} HỒ SƠ CỦA THÍ SINH NÀY TRÊN HỆ THỐNG:`,
+                `⚠️ ĐÃ CÓ ${result.count} HỒ SƠ CỦA THÍ SINH NÀY TRÊN HỆ THỐNG:`,
                 result.data,
                 () => {
                     currentAction = "UPDATE";
@@ -542,12 +542,12 @@ async function kiemTraCCCD() {
                 },
                 () => {
                     currentAction = "INSERT";
-                    showAlert("Vui lòng tiếp tục nhập liệu như một hồ sơ mới (Chọn ngành mới).", "ĐÃ CHỌN THÊM MỚI", false);
+                    showAlert("Tiếp tục nhập hồ sơ xét ngành khác.", "ĐÃ CHỌN THÊM MỚI", false);
                 }
             );
         } else if (result.status === "not_found") {
             currentAction = "INSERT";
-            showAlert("✅ Thí sinh mới tinh. Chưa có dữ liệu trên hệ thống. Tiếp tục nhập liệu bình thường!", "ĐÃ KIỂM TRA", false);
+            showAlert("✅ Chưa có dữ liệu trên hệ thống. Tiếp tục nhập hồ sơ!", "ĐÃ KIỂM TRA", false);
         } else {
             showAlert("Lỗi từ máy chủ: " + result.message, "❌ LỖI HỆ THỐNG");
         }
@@ -580,9 +580,9 @@ function lockSectionsIfApproved(statusString) {
     });
     
     if(isApproved) {
-        showAlert("Hồ sơ này đã được DUYỆT TRÚNG TUYỂN.\n\n👉 Tính năng khóa bảo vệ đã được bật. Bạn chỉ có thể tick bổ sung các hồ sơ còn thiếu, KHÔNG ĐƯỢC PHÉP sửa đổi Thông tin cá nhân, Ngành học hay Điểm số!", "🔒 HỒ SƠ ĐÃ KHÓA BẢO VỆ", false);
+        showAlert("Hồ sơ này đã được DUYỆT TRÚNG TUYỂN.\n\n👉 Bạn chỉ có thể tick bổ sung các hồ sơ còn thiếu, KHÔNG ĐƯỢC PHÉP sửa đổi Thông tin cá nhân, Ngành học hay Điểm số!", "🔒 HỒ SƠ ĐÃ KHÓA BẢO VỆ", false);
     } else {
-        showAlert("Hệ thống đã TỰ ĐỘNG ĐIỀN LẠI thông tin cũ và tick sẵn các giấy tờ đã nộp.\n\nHãy CHỌN ĐÚNG NGÀNH CẦN BỔ SUNG, sau đó TICK THÊM vào các loại giấy tờ mới nộp, cuối cùng bấm Thêm vào danh sách.", "ĐÃ LẤY LẠI HỒ SƠ", false);
+        showAlert("Hệ thống đã TỰ ĐỘNG ĐIỀN LẠI thông tin cũ và tick sẵn các giấy tờ đã nộp.\n\nHãy TICK THÊM vào các loại giấy tờ mới nộp", "ĐÃ TẢI LẠI HỒ SƠ", false);
     }
 }
 
