@@ -488,7 +488,7 @@ async function executeUploadToCloud(pendingList) {
 // ==========================================
 // MÃ SCRIPT THỰC HIỆN KIỂM TRA CCCD (LIÊN KẾT HTML)
 // ==========================================
-const API_CHECK_ID = "DÁN_LINK_API_CHECKID_VÀO_ĐÂY";
+const API_CHECK_ID = "https://script.google.com/macros/s/AKfycbx7zJeNwgHvfiACUBL7JBWto6iOaZFfeC12VpN6EYHBz_wZ0OGK0cIRlCSBHjs7KUiz/exec";
 
 async function kiemTraCCCD() {
     const cccd = document.getElementById('cccd').value.trim();
