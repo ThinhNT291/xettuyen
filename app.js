@@ -379,7 +379,7 @@ function addRow() {
         "STT": editingIndex !== -1 ? dataList[editingIndex]["STT"] : dataList.length + 1, "TRẠNG THÁI ĐẨY": "Waiting", 
         "_Action": currentAction, 
         "SỐ CCCD": fields[0].value.trim(), "TÊN SINH VIÊN": fields[1].value.trim(), "NGÀY SINH": formatVnDate(fields[2].value),
-        "NGÀNH": fields[3].value, "KHÓA": fields[4].value, "ĐỐI TƯỢNG ƯU TIÊN": fields[5].value, "KHU VỰC ƯU TIÊN": fields[6].value,
+        "NGÀNH": fields[3].value, "KHÓA": fields[4].value, "ĐỐI TƯỢ ƯU TIÊN": fields[5].value, "KHU VỰC ƯU TIÊN": fields[6].value,
         "ĐỐI TƯỢNG ĐẦU VÀO": fields[7].value, "NĂM XÉT TUYỂN": fields[8].value, "HỆ ĐÀO TẠO": fields[9].value, "HÌNH THỨC ĐÀO TẠO": fields[10].value,
         "LINK HỒ SƠ": document.getElementById('link_folder').value.trim(),
         "PHIẾU ĐĂNG KÝ DỰ TUYỂN": getChkVal('doc_phieu_dk'), "SƠ YẾU LÝ LỊCH": getChkVal('doc_syll'), "BẢN SAO CCCD": getChkVal('doc_cccd'), "BẢN SAO GIẤY KHAI SINH": getChkVal('doc_khaisinh'), "ẢNH THẺ": getChkVal('doc_anhthe'),
@@ -414,7 +414,7 @@ function renderTable() {
         const isUp = row["TRẠNG THÁI ĐẨY"] === "Uploaded";
         const actionText = row["_Action"] === "UPDATE" ? '<span style="color:#f57c00;font-weight:bold;">[UPDATE]</span> ' : '';
         const tr = document.createElement('tr'); if (isUp) tr.className = "row-uploaded";
-        tr.innerHTML = `<td>${row["STT"]}</td><td class="${isUp ? 'status-done' : 'status-pending'}">${row["TRẠNG THÁI ĐẨY"]}</td><td><b>${actionText}${row["SỐ CCCD"]}</b></td><td>${row["TÊN SINH VIÊN"]}</td><td>${row["NGÀY SINH"]}</td><td>${row["NGÀNH"]}</td><td>${row["KHÓA"]}</td><td>${row["ĐỐI TƯỢNG ƯU TIÊN"]}</td><td>${row["KHU VỰC ƯU TIÊN"]}</td><td>${row["ĐỐI TƯỢNG ĐẦU VÀO"]}</td><td>${row["NĂM XÉT TUYỂN"]}</td><td>${row["HỆ ĐÀO TẠO"]}</td><td>${row["HÌNH THỨC ĐÀO TẠO"]}</td>
+        tr.innerHTML = `<td>${row["STT"]}</td><td class="${isUp ? 'status-done' : 'status-pending'}">${row["TRẠNG THÁI ĐẨY"]}</td><td><b>${actionText}${row["SỐ CCCD"]}</b></td><td>${row["TÊN SINH VIÊN"]}</td><td>${row["NGÀY SINH"]}</td><td>${row["NGÀNH"]}</td><td>${row["KHÓA"]}</td><td>${row["ĐỐI TƯỢ ƯU TIÊN"]}</td><td>${row["KHU VỰC ƯU TIÊN"]}</td><td>${row["ĐỐI TƯỢNG ĐẦU VÀO"]}</td><td>${row["NĂM XÉT TUYỂN"]}</td><td>${row["HỆ ĐÀO TẠO"]}</td><td>${row["HÌNH THỨC ĐÀO TẠO"]}</td>
             ${fmtLink(row["LINK HỒ SƠ"])}${fmtTick(row["PHIẾU ĐĂNG KÝ DỰ TUYỂN"])}${fmtTick(row["SƠ YẾU LÝ LỊCH"])}${fmtTick(row["BẢN SAO CCCD"])}${fmtTick(row["BẢN SAO GIẤY KHAI SINH"])}${fmtTick(row["ẢNH THẺ"])}${fmtTick(row["BẢN SAO BẰNG THPT/GIẤY BÁO ĐIỂM"])}${fmtTick(row["BẢN SAO HỌC BẠ THPT"])}${fmtTick(row["BẢN SAO BẰNG TRUNG CẤP"])}${fmtTick(row["BẢNG ĐIỂM TRUNG CẤP"])}${fmtTick(row["BẰNG THPT/GCN ĐỦ KL KTVH THPT"])}${fmtTick(row["BẢN SAO BẰNG TRUNG CẤP TRƯỚC 2022"])}${fmtTick(row["BẢNG ĐIỂM TRUNG CẤP TRƯỚC 2022"])}${fmtTick(row["GCN HOÀN THÀNH CT GDPT"])}${fmtTick(row["BẰNG CAO ĐẲNG"])}${fmtTick(row["BẢNG ĐIỂM CAO ĐẲNG"])}${fmtTick(row["BẰNG ĐẠI HỌC"])}${fmtTick(row["BẢNG ĐIỂM ĐẠI HỌC"])}
             <td>${row["GIẤY TỜ ƯU TIÊN"]}</td><td>${row["TOÁN"]}</td><td>${row["VẬT LÍ"]}</td><td>${row["HÓA HỌC"]}</td><td>${row["SINH HỌC"]}</td><td>${row["NGỮ VĂN"]}</td><td>${row["LỊCH SỬ"]}</td><td>${row["ĐỊA LÝ"]}</td><td>${row["TIẾNG ANH"]}</td><td>${row["TIẾNG TRUNG"]}</td><td>${row["TIN HỌC"]}</td><td>${row["GDKTPL"]}</td><td><b>${row["ĐIỂM TB TOÀN KHÓA HỆ 4"]}</b></td><td><b>${row["ĐIỂM TB TOÀN KHÓA HỆ 10"]}</b></td><td><b style="color:#d32f2f">${row["ĐIỂM CỘNG"]}</b></td>
             <td>${!isUp ? `<div style="display:flex;"><button class="btn-edit-row" onclick="editRow(${index})" ${editingIndex !== -1 ? 'disabled style="opacity:0.5; cursor:not-allowed;"' : ''}>✏️</button><button class="btn-delete-row" onclick="deleteRow(${index})" ${editingIndex !== -1 ? 'disabled style="opacity:0.5; cursor:not-allowed;"' : ''}>🗑️</button></div>` : ''}</td>`;
@@ -586,7 +586,6 @@ function lockSectionsIfApproved(statusString) {
     }
 }
 
-
 function fillFormWithData(rowData) {
     document.getElementById('hoten').value = rowData["TÊN SINH VIÊN"] || rowData["HỌ VÀ TÊN"] || "";
     
@@ -601,18 +600,25 @@ function fillFormWithData(rowData) {
     document.getElementById('link_folder').value = rowData["LINK HỒ SƠ"] || rowData["Link hồ sơ"] || "";
     document.getElementById('giay_uutien').value = rowData["GIẤY TỜ ƯU TIÊN"] || "";
 
-    // BẢN FIX MỚI: Khớp "01" và "1" cho ô Select
+    // BẢN FIX MỚI: Khớp Dropdown chuẩn xác, bỏ qua trường hợp "Chọn..."
     const setSelect = (id, ...keys) => {
         let val = "";
-        for(let k of keys) { if(rowData[k]) { val = String(rowData[k]).trim(); break; } }
+        for (let k of keys) {
+            if (rowData[k] !== undefined && rowData[k] !== "") {
+                val = String(rowData[k]).trim().toLowerCase();
+                break;
+            }
+        }
         if (val) {
             let el = document.getElementById(id);
-            for(let i=0; i<el.options.length; i++) {
-                let optVal = String(el.options[i].value).trim();
-                // Khớp chính xác hoặc ép kiểu số để khớp "01" với "1"
-                if(optVal === val || parseInt(optVal) === parseInt(val) || optVal.includes(val) || val.includes(optVal)) { 
-                    el.selectedIndex = i; 
-                    break; 
+            for (let i = 0; i < el.options.length; i++) {
+                let optVal = String(el.options[i].value).trim().toLowerCase();
+                if (optVal === "") continue; // <-- Chặn triệt để lỗi "" bao trùm tất cả!
+                
+                // Khớp chính xác hoặc khớp số (Ví dụ 01 và 1)
+                if (optVal === val || (!isNaN(optVal) && !isNaN(val) && parseInt(optVal) === parseInt(val))) {
+                    el.selectedIndex = i;
+                    break;
                 }
             }
         }
@@ -629,7 +635,7 @@ function fillFormWithData(rowData) {
 
     handleDoiTuongChange(); 
 
-    // BẢN FIX MỚI: Bắt tất cả định dạng Tick (TRUE, true, 1, x, v)
+    // BẢN FIX MỚI: Đọc Tick chuẩn xác và tránh nhầm sang cột ID số CCCD
     const setChk = (id, ...keys) => { 
         let val = "";
         for(let k of keys) { 
@@ -648,7 +654,10 @@ function fillFormWithData(rowData) {
     
     setChk('doc_phieu_dk', "PHIẾU ĐĂNG KÝ DỰ TUYỂN", "PHIẾU ĐK"); 
     setChk('doc_syll', "SƠ YẾU LÝ LỊCH", "SYLL"); 
-    setChk('doc_cccd', "BẢN SAO CCCD", "CCCD", "BẢN SAO CĂN CƯỚC"); 
+    
+    // Đã xóa chữ "CCCD" ra khỏi đây để nó không nhảy nhầm sang cột chứa Số thẻ 097...
+    setChk('doc_cccd', "BẢN SAO CCCD", "BẢN SAO CĂN CƯỚC"); 
+    
     setChk('doc_khaisinh', "BẢN SAO GIẤY KHAI SINH", "KHAI SINH"); 
     setChk('doc_anhthe', "ẢNH THẺ");
     setChk('doc_bang_thpt', "BẢN SAO BẰNG THPT/GIẤY BÁO ĐIỂM", "BẰNG THPT"); 
