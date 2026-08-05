@@ -528,7 +528,7 @@ async function kiemTraCCCD() {
             );
         } else if (result.status === "not_found") {
             currentAction = "INSERT";
-            showAlert("✅ Thí sinh mới tinh. Chưa có dữ liệu trên hệ thống. Tiếp tục nhập liệu bình thường!", "ĐÃ KIỂM TRA", false);
+            showAlert("✅ Chưa có dữ liệu trên hệ thống. Tiếp tục nhập liệu bình thường!", "ĐÃ KIỂM TRA", false);
         } else {
             showAlert("❌ Lỗi từ máy chủ: " + result.message);
         }
