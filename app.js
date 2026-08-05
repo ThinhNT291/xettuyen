@@ -306,6 +306,16 @@ function clearForm() {
     document.getElementById('doc-placeholder').style.display = 'block'; document.getElementById('score-placeholder').style.display = 'block';
     document.getElementById('traffic-light-box').style.display = 'none';
     currentAction = "INSERT"; 
+    
+    // MỞ KHÓA TẤT CẢ CÁC TRƯỜNG NẾU ĐANG BỊ KHÓA BỞI HỒ SƠ "ĐÃ DUYỆT"
+    const fieldsToUnlock = ['hoten', 'ngaysinh', 'nganh', 'khoa', 'doituonguutien', 'khuvucuutien', 'doituongdauvao', 'namtt', 'hedaotao', 'htdaotao'];
+    fieldsToUnlock.forEach(id => {
+        let el = document.getElementById(id);
+        if(el) { el.disabled = false; el.style.background = ""; }
+    });
+    document.querySelectorAll('.score-val').forEach(el => {
+        el.disabled = false; el.style.background = "";
+    });
 }
 
 function cancelEdit() {
@@ -387,7 +397,9 @@ function addRow() {
         document.getElementById('btnCancelEdit').style.display = "none";
         showAlert("Đã cập nhật hồ sơ thành công!", "✅ LƯU THÀNH CÔNG", false);
     } else { dataList.push(newRowData); }
-    renderTable(); clearForm(); fields[0].focus(); 
+    
+    // NẾU VỪA LƯU HỒ SƠ ĐÃ KHÓA THÌ SAU KHI LƯU XONG PHẢI MỞ KHÓA RA LẠI
+    clearForm(); renderTable(); fields[0].focus(); 
 }
 
 const fmtTick = (val) => val === "TRUE" ? `<td class="tick-true">✔</td>` : (val === "FALSE" ? `<td style="color:#d32f2f; text-align:center; font-weight:bold;">✘</td>` : `<td>${val || ""}</td>`);
@@ -482,6 +494,7 @@ async function executeUploadToCloud(pendingList) {
 // ==========================================
 // MÃ SCRIPT KIỂM TRA CCCD & TỰ ĐỘNG ĐIỀN FORM
 // ==========================================
+// DÁN LẠI LINK API CHECK_ID VÀO ĐÂY NHÉ:
 const API_CHECK_ID = "https://script.google.com/macros/s/AKfycbx7zJeNwgHvfiACUBL7JBWto6iOaZFfeC12VpN6EYHBz_wZ0OGK0cIRlCSBHjs7KUiz/exec";
 
 async function kiemTraCCCD() {
@@ -526,7 +539,6 @@ async function kiemTraCCCD() {
                 () => {
                     currentAction = "UPDATE";
                     fillFormWithData(result.data[0].fullData);
-                    showAlert("Hệ thống đã TỰ ĐỘNG ĐIỀN LẠI thông tin cũ.\n\nHãy CHỌN ĐÚNG NGÀNH CẦN BỔ SUNG, sau đó TICK THÊM vào các loại giấy tờ mới nộp, cuối cùng bấm Thêm vào danh sách.", "ĐÃ LẤY LẠI HỒ SƠ", false);
                 },
                 () => {
                     currentAction = "INSERT";
@@ -547,6 +559,34 @@ async function kiemTraCCCD() {
     }
 }
 
+// HÀM KHÓA GIAO DIỆN NẾU HỒ SƠ ĐÃ DUYỆT TRÚNG TUYỂN
+function lockSectionsIfApproved(statusString) {
+    const isApproved = statusString && String(statusString).toUpperCase().includes("ĐÃ DUYỆT");
+    
+    // Khóa Phần 1 (Trừ Link hồ sơ)
+    const fieldsToLock = ['hoten', 'ngaysinh', 'nganh', 'khoa', 'doituonguutien', 'khuvucuutien', 'doituongdauvao', 'namtt', 'hedaotao', 'htdaotao'];
+    fieldsToLock.forEach(id => {
+        const el = document.getElementById(id);
+        if(el) {
+            el.disabled = isApproved;
+            el.style.background = isApproved ? "#e9ecef" : "";
+        }
+    });
+    
+    // Khóa Phần 3 (Điểm số)
+    document.querySelectorAll('.score-val').forEach(el => {
+        el.disabled = isApproved;
+        el.style.background = isApproved ? "#e9ecef" : "";
+    });
+    
+    if(isApproved) {
+        showAlert("Hồ sơ này đã được DUYỆT TRÚNG TUYỂN.\n\n👉 Tính năng khóa bảo vệ đã được bật. Bạn chỉ có thể tick bổ sung các hồ sơ còn thiếu, KHÔNG ĐƯỢC PHÉP sửa đổi Thông tin cá nhân, Ngành học hay Điểm số!", "🔒 HỒ SƠ ĐÃ KHÓA BẢO VỆ", false);
+    } else {
+        showAlert("Hệ thống đã TỰ ĐỘNG ĐIỀN LẠI thông tin cũ và tick sẵn các giấy tờ đã nộp.\n\nHãy CHỌN ĐÚNG NGÀNH CẦN BỔ SUNG, sau đó TICK THÊM vào các loại giấy tờ mới nộp, cuối cùng bấm Thêm vào danh sách.", "ĐÃ LẤY LẠI HỒ SƠ", false);
+    }
+}
+
+
 function fillFormWithData(rowData) {
     document.getElementById('hoten').value = rowData["TÊN SINH VIÊN"] || rowData["HỌ VÀ TÊN"] || "";
     
@@ -561,17 +601,25 @@ function fillFormWithData(rowData) {
     document.getElementById('link_folder').value = rowData["LINK HỒ SƠ"] || rowData["Link hồ sơ"] || "";
     document.getElementById('giay_uutien').value = rowData["GIẤY TỜ ƯU TIÊN"] || "";
 
-    const setSelect = (id, key, key2) => {
-        let val = rowData[key] || rowData[key2] || "";
+    // BẢN FIX MỚI: Khớp "01" và "1" cho ô Select
+    const setSelect = (id, ...keys) => {
+        let val = "";
+        for(let k of keys) { if(rowData[k]) { val = String(rowData[k]).trim(); break; } }
         if (val) {
             let el = document.getElementById(id);
             for(let i=0; i<el.options.length; i++) {
-                if(el.options[i].value === val) { el.selectedIndex = i; break; }
+                let optVal = String(el.options[i].value).trim();
+                // Khớp chính xác hoặc ép kiểu số để khớp "01" với "1"
+                if(optVal === val || parseInt(optVal) === parseInt(val) || optVal.includes(val) || val.includes(optVal)) { 
+                    el.selectedIndex = i; 
+                    break; 
+                }
             }
         }
     };
+    
     setSelect('nganh', "NGÀNH ĐÀO TẠO", "NGÀNH");
-    setSelect('khoa', "KHÓA", "KHÓA");
+    setSelect('khoa', "KHÓA");
     setSelect('doituonguutien', "ĐỐI TƯỢNG ƯU TIÊN", "ĐỐI TƯỢ ƯU TIÊN");
     setSelect('khuvucuutien', "KHU VỰC ƯU TIÊN", "KHU VỰC");
     setSelect('doituongdauvao', "ĐỐI TƯỢNG ĐẦU VÀO", "ĐẦU VÀO");
@@ -581,22 +629,34 @@ function fillFormWithData(rowData) {
 
     handleDoiTuongChange(); 
 
-    const setChk = (id, key) => { 
-        let val = String(rowData[key]).toUpperCase().trim();
-        if (val === "TRUE" || val === "1") document.getElementById(id).checked = true; 
+    // BẢN FIX MỚI: Bắt tất cả định dạng Tick (TRUE, true, 1, x, v)
+    const setChk = (id, ...keys) => { 
+        let val = "";
+        for(let k of keys) { 
+            if(rowData[k] !== undefined && rowData[k] !== "") { 
+                val = String(rowData[k]).toUpperCase().trim(); 
+                break; 
+            } 
+        }
+        const el = document.getElementById(id);
+        if (val === "TRUE" || val === "1" || val === "V" || val === "X" || val === "CÓ") {
+            el.checked = true;
+        } else {
+            el.checked = false; 
+        }
     };
-    setChk('doc_phieu_dk', "PHIẾU ĐĂNG KÝ DỰ TUYỂN"); 
-    setChk('doc_syll', "SƠ YẾU LÝ LỊCH"); 
-    setChk('doc_cccd', "BẢN SAO CCCD"); 
-    setChk('doc_khaisinh', "BẢN SAO GIẤY KHAI SINH"); 
+    
+    setChk('doc_phieu_dk', "PHIẾU ĐĂNG KÝ DỰ TUYỂN", "PHIẾU ĐK"); 
+    setChk('doc_syll', "SƠ YẾU LÝ LỊCH", "SYLL"); 
+    setChk('doc_cccd', "BẢN SAO CCCD", "CCCD", "BẢN SAO CĂN CƯỚC"); 
+    setChk('doc_khaisinh', "BẢN SAO GIẤY KHAI SINH", "KHAI SINH"); 
     setChk('doc_anhthe', "ẢNH THẺ");
-    setChk('doc_bang_thpt', "BẢN SAO BẰNG THPT/GIẤY BÁO ĐIỂM"); 
-    setChk('doc_hocba_thpt', "BẢN SAO HỌC BẠ THPT"); 
-    setChk('doc_bang_tc', "BẢN SAO BẰNG TRUNG CẤP"); 
-    setChk('doc_diem_tc', "BẢNG ĐIỂM TRUNG CẤP");
+    setChk('doc_bang_thpt', "BẢN SAO BẰNG THPT/GIẤY BÁO ĐIỂM", "BẰNG THPT"); 
+    setChk('doc_hocba_thpt', "BẢN SAO HỌC BẠ THPT", "HỌC BẠ THPT"); 
+    setChk('doc_bang_tc', "BẢN SAO BẰNG TRUNG CẤP", "BẰNG TC"); 
+    setChk('doc_diem_tc', "BẢNG ĐIỂM TRUNG CẤP", "BẢNG ĐIỂM TC");
     setChk('doc_ktvh_thpt', "BẰNG THPT/GCN ĐỦ KL KTVH THPT"); 
     setChk('doc_bang_tc_truoc', "BẢN SAO BẰNG TRUNG CẤP TRƯỚC 2022"); 
-    setDict = setChk; // Tránh sót
     setChk('doc_diem_tc_truoc', "BẢNG ĐIỂM TRUNG CẤP TRƯỚC 2022");
     setChk('doc_gcn_gdpt', "GCN HOÀN THÀNH CT GDPT"); 
     setChk('doc_bang_cd', "BẰNG CAO ĐẲNG"); 
@@ -616,4 +676,7 @@ function fillFormWithData(rowData) {
     setScore('diem_tb_he4', "ĐIỂM TB TOÀN KHÓA HỆ 4"); setScore('diem_tb_he10', "ĐIỂM TB TOÀN KHÓA HỆ 10"); setScore('diem_cong', "ĐIỂM CỘNG");
 
     autoCheckAdmission(); 
+    
+    // KÍCH HOẠT KHÓA NẾU HỒ SƠ ĐÃ DUYỆT
+    lockSectionsIfApproved(rowData["TRẠNG THÁI THẨM ĐỊNH"] || rowData["TRẠNG THÁI"] || "");
 }
