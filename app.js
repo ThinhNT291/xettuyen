@@ -493,7 +493,7 @@ const API_CHECK_ID = "https://script.google.com/macros/s/AKfycbx7zJeNwgHvfiACUBL
 async function kiemTraCCCD() {
     const cccd = document.getElementById('cccd').value.trim();
     if (!cccd) { 
-        showAlert("⚠️ Vui lòng nhập Số CCCD trước khi bấm kiểm tra!", "Lỗi nhập liệu"); 
+        showAlert("⚠️ Vui lòng nhập Số CCCD trước khi bấm kiểm tra!", "LỖI NHẬP LIỆU"); 
         document.getElementById('cccd').focus();
         return; 
     }
@@ -509,8 +509,25 @@ async function kiemTraCCCD() {
             headers: { "Content-Type": "text/plain;charset=utf-8" },
             body: JSON.stringify({ cccd: cccd })
         });
-        const result = await resp.json();
         
+        // Đọc dữ liệu thô trả về trước để bắt lỗi HTML của Google
+        const textResp = await resp.text();
+        let result;
+        
+        try {
+            result = JSON.parse(textResp);
+        } catch (parseError) {
+            // Nếu parse lỗi, tức là Google trả về HTML chứ không phải JSON
+            console.error("Raw response:", textResp);
+            if (textResp.includes("Authorization") || textResp.includes("sign in")) {
+                showAlert("Google đang chặn quyền truy cập. Bạn hãy kiểm tra lại mã GAS CheckID đã cấp quyền (Run hàm capQuyen) và Deploy với quyền 'Who has access: Anyone' chưa nhé!", "❌ LỖI PHÂN QUYỀN API");
+            } else {
+                showAlert("Link API không hợp lệ hoặc máy chủ trả về trang web thay vì dữ liệu. Vui lòng kiểm tra lại link API (phải có đuôi /exec).", "❌ LỖI API");
+            }
+            return;
+        }
+        
+        // Xử lý dữ liệu JSON nếu parse thành công
         if (result.status === "success") {
             showUpdateOrInsertConfirm(
                 `⚠️ TÌM THẤY ${result.count} HỒ SƠ CỦA THÍ SINH NÀY TRÊN HỆ THỐNG:`,
@@ -518,7 +535,7 @@ async function kiemTraCCCD() {
                 // Hành động Update (Cập nhật hồ sơ hiện tại)
                 () => {
                     currentAction = "UPDATE";
-                    showAlert("Hệ thống đã ghi nhận. Hãy điền các thông tin và TICK THÊM vào các hồ sơ cần bổ sung, sau đó bấm Thêm vào danh sách.", "ĐÃ CHỌN CẬP NHẬT", false);
+                    showAlert("Hệ thống đã ghi nhận.\n\nHãy điền thông tin và TICK THÊM vào các hồ sơ cần bổ sung (chọn đúng ngành cũ), sau đó bấm Thêm vào danh sách.", "ĐÃ CHỌN CẬP NHẬT", false);
                 },
                 // Hành động Insert (Thêm hồ sơ mới)
                 () => {
@@ -528,12 +545,12 @@ async function kiemTraCCCD() {
             );
         } else if (result.status === "not_found") {
             currentAction = "INSERT";
-            showAlert("✅ Chưa có dữ liệu trên hệ thống. Tiếp tục nhập liệu bình thường!", "ĐÃ KIỂM TRA", false);
+            showAlert("✅ Thí sinh mới tinh. Chưa có dữ liệu trên hệ thống. Tiếp tục nhập liệu bình thường!", "ĐÃ KIỂM TRA", false);
         } else {
-            showAlert("❌ Lỗi từ máy chủ: " + result.message);
+            showAlert("Lỗi từ máy chủ: " + result.message, "❌ LỖI HỆ THỐNG");
         }
     } catch (e) {
-        showAlert("❌ Lỗi kết nối kiểm tra mạng: " + e);
+        showAlert("Lỗi kết nối kiểm tra mạng. Vui lòng kiểm tra lại Wifi/3G của bạn.", "❌ LỖI KẾT NỐI");
     } finally {
         btn.innerText = originalText; 
         btn.disabled = false;
