@@ -319,8 +319,20 @@
         <button class="btn-push" id="btnPush" onclick="sendToCloud()">☁️ Đẩy dữ liệu lên hệ thống</button>
     </div>
 
+<!-- KẾT THÚC BẢNG HIỂN THỊ DỮ LIỆU -->
+    
+    <div class="btn-group btn-bottom">
+        <button class="btn-clear" onclick="clearTable()">🗑️ Xóa làm lại</button>
+        <button class="btn-export" onclick="exportToExcel()">📥 Xuất file Excel</button>
+        <button class="btn-push" id="btnPush" onclick="sendToCloud()">☁️ Đẩy dữ liệu lên hệ thống</button>
+    </div>
+</div> <!-- ĐÂY! CHÍNH LÀ THẺ ĐÓNG CỦA .CONTAINER MÀ ÔNG QUÊN NÈ -->
+
+<!-- CHỮ KÝ NẰM Ở ĐÂY: NGOÀI CONTAINER VÀ NGOÀI MODAL -->
+<div class="copyright">© Liên hệ hỗ trợ: Nguyễn Tiến Thịnh _ 0985-822037</div>
+
 <!-- KHUNG MODAL THAY THẾ ALERT / CONFIRM CỦA TRÌNH DUYỆT -->
-<div id="customModal" class="modal-overlay">
+<div id="customModal" class="modal-overlay" style="display:none;">
     <div class="modal-box">
         <div id="modalHeader" class="modal-header"></div>
         <div id="modalBody" class="modal-body"></div>
@@ -329,14 +341,14 @@
 </div>
 
 <!-- KHUNG MODAL TRA CỨU KHU VỰC -->
-<div id="lookupModal" class="modal-overlay">
+<div id="lookupModal" class="modal-overlay" style="display:none;">
     <div class="modal-box" style="max-width: 1100px; width: 95%; height: 85vh; display: flex; flex-direction: column;">
         <div class="modal-header info" style="flex-direction: column; align-items: flex-start; gap: 10px; padding: 15px 20px;">
             <div style="display: flex; justify-content: space-between; width: 100%;">
                 <span style="font-weight: bold; font-size: 16px; color: #fff;">🗺️ TRA CỨU KHU VỰC ƯU TIÊN</span>
                 <span style="cursor: pointer; font-size: 20px; line-height: 1; color: #ffeb3b;" onclick="closeLookupModal()">✖</span>
             </div>
-            <input type="text" id="searchInput" placeholder="🔍 Nhập tên trường, xã, huyện để tìm kiếm..." style="width: 100%; max-width: 450px; padding: 8px 12px; border: 1px solid #ccc; border-radius: 4px; font-size: 14px; color: #333;" onkeyup="searchLookupTable()">
+            <input type="text" id="searchInput" placeholder="🔍 Nhập tên trường, xã, huyện để tìm kiếm..." style="width: 100%; max-width: 450px; padding: 8px 12px; border: 1px solid #ccc; border-radius: 4px; font-size: 14px; color: #333;" onkeyup="if(event.key==='Enter') searchLookupTable()">
         </div>
         <div class="modal-body" style="flex: 1; padding: 0; overflow: auto; background: #f9f9f9;">
             <div id="lookupContent" style="padding: 15px;">
@@ -345,8 +357,9 @@
         </div>
     </div>
 </div>
-<!-- GỌI SCRIPT (TĂNG PHIÊN BẢN LÊN v=10 ĐỂ ÉP TRÌNH DUYỆT XÓA CACHE CŨ) -->
-<script src="data_config.js?v=19"></script>
-<script src="app.js?v=19"></script>
+
+<!-- GỌI SCRIPT -->
+<script src="data_config.js?v=20"></script>
+<script src="app.js?v=20"></script>
 </body>
 </html>
