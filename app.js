@@ -392,7 +392,7 @@ function addRow() {
         "_Action": currentAction, 
         
         "CĂN CƯỚC": fields[0].value.trim(), "TÊN SINH VIÊN": fields[1].value.trim(), "NGÀY SINH": formatVnDate(fields[2].value),
-        "NGÀNH": fields[3].value, "KHÓA": fields[4].value, "ĐỐI TƯỢNG ƯU TIÊN": fields[5].value, "KHU VỰC ƯU TIÊN": fields[6].value,
+        "NGÀNH": fields[3].value, "KHÓA": fields[4].value, "ĐỐI TƯỢ ƯU TIÊN": fields[5].value, "KHU VỰC ƯU TIÊN": fields[6].value,
         "ĐỐI TƯỢNG ĐẦU VÀO": fields[7].value, "NĂM XÉT TUYỂN": fields[8].value, "HỆ ĐÀO TẠO": fields[9].value, "HÌNH THỨC ĐÀO TẠO": fields[10].value,
         "LINK HỒ SƠ": document.getElementById('link_folder').value.trim(),
         
@@ -437,8 +437,11 @@ function renderTable() {
             <td>${!isUp ? `<div style="display:flex;"><button class="btn-edit-row" onclick="editRow(${index})" ${editingIndex !== -1 ? 'disabled style="opacity:0.5; cursor:not-allowed;"' : ''}>✏️</button><button class="btn-delete-row" onclick="deleteRow(${index})" ${editingIndex !== -1 ? 'disabled style="opacity:0.5; cursor:not-allowed;"' : ''}>🗑️</button></div>` : ''}</td>`;
         tbody.appendChild(tr);
     });
+    
+    // BỌC GIÁP: KIỂM TRA XEM STATUS BAR CÓ CÒN TỒN TẠI KHÔNG TRƯỚC KHI IN
     const pendingCount = dataList.filter(r => r["TRẠNG THÁI ĐẨY"] === "Waiting").length;
-    document.getElementById('statusBar').innerText = `Tổng số ${dataList.length} hồ sơ (Đang có ${pendingCount} hồ sơ chưa đồng bộ).`;
+    const sb = document.getElementById('statusBar');
+    if(sb) sb.innerText = `Tổng số ${dataList.length} hồ sơ (Đang có ${pendingCount} hồ sơ chưa đồng bộ).`;
 }
 
 function exportToExcel() {
@@ -448,7 +451,14 @@ function exportToExcel() {
     XLSX.writeFile(workbook, `Du_Lieu_Nhap_${new Date().toISOString().slice(0,10)}.xlsx`);
 }
 
-function clearTable() { showConfirm("Bạn có chắc chắn muốn xóa sạch toàn bộ danh sách đã nhập bên dưới không?", () => { dataList = []; renderTable(); document.getElementById('statusBar').innerText = "Chưa có dữ liệu nào được nhập trong phiên này."; }); }
+function clearTable() { 
+    showConfirm("Bạn có chắc chắn muốn xóa sạch toàn bộ danh sách đã nhập bên dưới không?", () => { 
+        dataList = []; 
+        renderTable(); 
+        const sb = document.getElementById('statusBar'); 
+        if(sb) sb.innerText = "Chưa có dữ liệu nào được nhập trong phiên này."; 
+    }); 
+}
 
 function getNowTimestampAsText() {
     const now = new Date(); const pad = (n) => n.toString().padStart(2, '0');
@@ -491,7 +501,10 @@ async function sendToCloud() {
 async function executeUploadToCloud(pendingList) {
     const btnPush = document.getElementById('btnPush'); const originalText = btnPush.innerHTML;
     btnPush.disabled = true; btnPush.innerHTML = "⏳ Processing...";
-    document.getElementById('statusBar').innerText = `⏳ Đang tải ${pendingList.length} hồ sơ mới lên hệ thống...`;
+    
+    // BỌC GIÁP: KIỂM TRA STATUS BAR
+    const sb = document.getElementById('statusBar');
+    if(sb) sb.innerText = `⏳ Đang tải ${pendingList.length} hồ sơ mới lên hệ thống...`;
     
     const pushTimeText = getNowTimestampAsText(); const displayTime = pushTimeText.substring(1);
     const dataToSend = pendingList.map(row => { const copyRow = { ...row }; delete copyRow["TRẠNG THÁI ĐẨY"]; copyRow["TIME"] = pushTimeText; return copyRow; });
