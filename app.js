@@ -711,3 +711,22 @@ function fillFormWithData(rowData) {
     
     lockSectionsIfApproved(normData["TRẠNG THÁI THẨM ĐỊNH"] || normData["TRẠNG THÁI"] || "");
 }
+
+// ==========================================
+// TÍNH NĂNG BẤM PHÍM ESC ĐỂ ĐÓNG POPUP
+// ==========================================
+window.addEventListener('keydown', function(event) {
+    if (event.key === "Escape") {
+        // Đóng hộp thoại tra cứu mã trường/khu vực
+        const lookupModal = document.getElementById('lookupModal');
+        if (lookupModal && lookupModal.style.display === 'flex') {
+            closeLookupModal();
+        }
+        
+        // Đóng hộp thoại cảnh báo/xác nhận chung
+        const customModal = document.getElementById('customModal');
+        if (customModal && customModal.style.display === 'flex') {
+            customModal.style.display = 'none';
+        }
+    }
+});
