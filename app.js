@@ -392,7 +392,7 @@ function addRow() {
         "_Action": currentAction, 
         
         "CĂN CƯỚC": fields[0].value.trim(), "TÊN SINH VIÊN": fields[1].value.trim(), "NGÀY SINH": formatVnDate(fields[2].value),
-        "NGÀNH": fields[3].value, "KHÓA": fields[4].value, "ĐỐI TƯỢ ƯU TIÊN": fields[5].value, "KHU VỰC ƯU TIÊN": fields[6].value,
+        "NGÀNH": fields[3].value, "KHÓA": fields[4].value, "ĐỐI TƯỢNG ƯU TIÊN": fields[5].value, "KHU VỰC ƯU TIÊN": fields[6].value,
         "ĐỐI TƯỢNG ĐẦU VÀO": fields[7].value, "NĂM XÉT TUYỂN": fields[8].value, "HỆ ĐÀO TẠO": fields[9].value, "HÌNH THỨC ĐÀO TẠO": fields[10].value,
         "LINK HỒ SƠ": document.getElementById('link_folder').value.trim(),
         
@@ -661,7 +661,7 @@ function fillFormWithData(rowData) {
     
     setSelect('nganh', "NGÀNH ĐÀO TẠO", "NGÀNH");
     setSelect('khoa', "KHÓA");
-    setSelect('doituonguutien', "ĐỐI TƯỢNG ƯU TIÊN", "ĐỐI TƯỢ ƯU TIÊN");
+    setSelect('doituonguutien', "ĐỐI TƯỢNG ƯU TIÊN", "ĐỐI TƯỢNG ƯU TIÊN");
     setSelect('khuvucuutien', "KHU VỰC ƯU TIÊN", "KHU VỰC");
     setSelect('doituongdauvao', "ĐỐI TƯỢNG ĐẦU VÀO", "ĐẦU VÀO");
     setSelect('namtt', "NĂM XÉT TUYỂN", "NĂM TRÚNG TUYỂN");
