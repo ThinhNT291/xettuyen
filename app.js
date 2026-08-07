@@ -380,11 +380,19 @@ function editRow(index) {
 }
 
 function addRow() {
+    // 1. Kiểm tra các ô text/select bắt buộc (Đã có sẵn)
     const fields = ['cccd', 'hoten', 'ngaysinh', 'nganh', 'khoa', 'doituonguutien', 'khuvucuutien', 'doituongdauvao', 'namtt', 'hedaotao', 'htdaotao'].map(id => document.getElementById(id));
     for (let i = 0; i < fields.length; i++) {
         if (!fields[i].value.trim()) {
             showAlert(`Không được bỏ trống trường dữ liệu bắt buộc!`, "⚠️ THIẾU THÔNG TIN", true, () => { fields[i].focus(); }); return;
         }
+    }
+
+    // 2. LOGIC MỚI: BẮT BUỘC TICK PHIẾU ĐĂNG KÝ DỰ TUYỂN
+    const chkPhieuDK = document.getElementById('doc_phieu_dk');
+    if (!chkPhieuDK.checked) {
+        showAlert(`Bắt buộc phải nhận "Phiếu đăng ký dự tuyển" trước khi thêm vào danh sách!`, "⚠️ THIẾU HỒ SƠ TIÊN QUYẾT", true, () => { chkPhieuDK.focus(); }); 
+        return; // Chặn lại, không cho chạy tiếp lệnh bên dưới
     }
 
     const newRowData = {
