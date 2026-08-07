@@ -384,14 +384,14 @@ function addRow() {
     const fields = ['cccd', 'hoten', 'ngaysinh', 'nganh', 'khoa', 'doituonguutien', 'khuvucuutien', 'doituongdauvao', 'namtt', 'hedaotao', 'htdaotao'].map(id => document.getElementById(id));
     for (let i = 0; i < fields.length; i++) {
         if (!fields[i].value.trim()) {
-            showAlert(`Không được bỏ trống trường dữ liệu bắt buộc!`, "⚠️ THIẾU THÔNG TIN", true, () => { fields[i].focus(); }); return;
+            showAlert(`Không được bỏ trống các dữ liệu bắt buộc!`, "⚠️ THIẾU THÔNG TIN", true, () => { fields[i].focus(); }); return;
         }
     }
 
     // 2. LOGIC MỚI: BẮT BUỘC TICK PHIẾU ĐĂNG KÝ DỰ TUYỂN
     const chkPhieuDK = document.getElementById('doc_phieu_dk');
     if (!chkPhieuDK.checked) {
-        showAlert(`Bắt buộc phải nhận "Phiếu đăng ký dự tuyển" trước khi thêm vào danh sách!`, "⚠️ THIẾU HỒ SƠ TIÊN QUYẾT", true, () => { chkPhieuDK.focus(); }); 
+        showAlert(`Thí sinh chưa có Phiếu đăng ký dự tuyển !`, "⚠️ THIẾU HỒ SƠ TIÊN QUYẾT", true, () => { chkPhieuDK.focus(); }); 
         return; // Chặn lại, không cho chạy tiếp lệnh bên dưới
     }
 
