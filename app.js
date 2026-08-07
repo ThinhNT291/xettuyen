@@ -531,97 +531,101 @@ async function executeUploadToCloud(pendingList) {
 
 const API_CHECK_ID = "https://script.google.com/macros/s/AKfycbx7zJeNwgHvfiACUBL7JBWto6iOaZFfeC12VpN6EYHBz_wZ0OGK0cIRlCSBHjs7KUiz/exec";
 
-async function kiemTraCCCD() {
-    const cccd = document.getElementById('cccd').value.trim();
-    if (!cccd) { 
-        showAlert("⚠️ Nhập Số CCCD trước khi bấm kiểm tra!", "LỖI NHẬP LIỆU"); 
-        document.getElementById('cccd').focus();
-        return; 
-    }
+let currentSearchResults = [];
+
+function openSearchModal() {
+    document.getElementById('searchCandidateModal').style.display = 'flex';
+    document.getElementById('searchCandidateInput').value = "";
+    document.getElementById('searchCandidateContent').innerHTML = '<p style="text-align: center; color: #666; font-style: italic; margin-top: 30px;">Nhập Họ tên hoặc Số Căn cước và bấm Tìm kiếm...</p>';
+    document.getElementById('searchCandidateInput').focus();
+}
+
+function closeSearchModal() { document.getElementById('searchCandidateModal').style.display = 'none'; }
+
+async function executeSearchCandidate() {
+    const keyword = document.getElementById('searchCandidateInput').value.trim();
+    if (!keyword) { showAlert("Chưa nhập từ khóa!", "LỖI NHẬP LIỆU"); return; }
     
-    const btn = document.querySelector('button[onclick="kiemTraCCCD()"]');
-    const originalText = btn.innerText;
-    btn.innerText = "⏳ Checking..."; 
-    btn.disabled = true;
+    const contentDiv = document.getElementById('searchCandidateContent');
+    contentDiv.innerHTML = '<p style="text-align: center; color: #0288d1; font-weight: bold; margin-top: 30px;">⏳ Please wait...</p>';
 
     try {
         const resp = await fetch(API_CHECK_ID, {
-            method: "POST",
-            headers: { "Content-Type": "text/plain;charset=utf-8" },
-            body: JSON.stringify({ cccd: cccd })
+            method: "POST", headers: { "Content-Type": "text/plain;charset=utf-8" },
+            body: JSON.stringify({ keyword: keyword })
         });
         
-        const textResp = await resp.text();
-        let result;
-        
-        try {
-            result = JSON.parse(textResp);
-        } catch (parseError) {
-            console.error("Lỗi parse JSON:", textResp);
-            if (textResp.includes("Authorization") || textResp.includes("sign in")) {
-                showAlert("Server blocked !", "❌ LỖI");
-            } else {
-                showAlert("/exec error.", "❌ LỖI API");
-            }
-            return;
-        }
+        const result = await resp.json();
         
         if (result.status === "success") {
-            showUpdateOrInsertConfirm(
-                `⚠️ ĐÃ CÓ ${result.count} HỒ SƠ CỦA THÍ SINH NÀY TRÊN HỆ THỐNG:`,
-                result.data,
-                () => {
-                    currentAction = "UPDATE";
-                    fillFormWithData(result.data[0].fullData);
-                },
-                () => {
-                    currentAction = "INSERT";
-                    showAlert("Tiếp tục nhập hồ sơ xét ngành khác.", "ĐÃ CHỌN THÊM MỚI", false);
-                }
-            );
+            currentSearchResults = result.data;
+            let html = '<table style="width: 100%; border-collapse: collapse; font-size: 12px; text-align: left;">';
+            html += '<thead style="background: #e0f2f1; position: sticky; top: 0;"><tr><th style="padding:8px; border:1px solid #ddd; text-align:center;">STT</th><th style="padding:8px; border:1px solid #ddd;">HỌ TÊN</th><th style="padding:8px; border:1px solid #ddd;">CĂN CƯỚC</th><th style="padding:8px; border:1px solid #ddd;">NGÀNH</th><th style="padding:8px; border:1px solid #ddd;">TRẠNG THÁI</th><th style="padding:8px; border:1px solid #ddd; text-align:center;">THAO TÁC</th></tr></thead><tbody>';
+            
+            result.data.forEach((item, index) => {
+                let badgeColor = item.trangThai.includes("Đã duyệt") ? "#2e7d32" : (item.trangThai.includes("thiếu") ? "#d84315" : "#0288d1");
+                html += `<tr onmouseover="this.style.background='#f5f5f5'" onmouseout="this.style.background='none'">
+                    <td style="padding:8px; border:1px solid #ddd; text-align:center;">${index + 1}</td>
+                    <td style="padding:8px; border:1px solid #ddd; font-weight:bold;">${item.hoTen}</td>
+                    <td style="padding:8px; border:1px solid #ddd;">${item.cccd}</td>
+                    <td style="padding:8px; border:1px solid #ddd;">${item.nganh}</td>
+                    <td style="padding:8px; border:1px solid #ddd; font-weight:bold; color: ${badgeColor};">${item.trangThai}</td>
+                    <td style="padding:8px; border:1px solid #ddd; text-align:center;">
+                        <button onclick="loadOldCandidate(${index})" style="background:#0288d1; color:white; border:none; padding:5px 10px; border-radius:3px; cursor:pointer; font-weight:bold;">✏️ Sửa</button>
+                    </td>
+                </tr>`;
+            });
+            html += '</tbody></table>';
+            contentDiv.innerHTML = html;
         } else if (result.status === "not_found") {
-            currentAction = "INSERT";
-            showAlert("✅ Chưa có dữ liệu trên hệ thống. Tiếp tục nhập hồ sơ!", "ĐÃ KIỂM TRA", false);
+            contentDiv.innerHTML = `<p style="text-align: center; color: #d32f2f; font-weight: bold; margin-top: 30px;">❌ ${result.message}</p>`;
         } else {
-            showAlert("Lỗi từ máy chủ: " + result.message, "❌ LỖI HỆ THỐNG");
+            contentDiv.innerHTML = `<p style="text-align: center; color: #d32f2f; margin-top: 30px;">Lỗi hệ thống: ${result.message}</p>`;
         }
     } catch (e) {
-        showAlert("Lỗi kết nối kiểm tra mạng. Vui lòng kiểm tra lại Wifi/3G của bạn.", "❌ LỖI KẾT NỐI");
-    } finally {
-        btn.innerText = originalText; 
-        btn.disabled = false;
+        contentDiv.innerHTML = '<p style="text-align: center; color: #d32f2f; font-weight: bold; margin-top: 30px;">❌ Lỗi kết nối mạng, vui lòng thử lại.</p>';
     }
+}
+
+function loadOldCandidate(index) {
+    closeSearchModal();
+    currentAction = "UPDATE";
+    fillFormWithData(currentSearchResults[index].fullData);
 }
 
 function lockSectionsIfApproved(statusString) {
     const isApproved = statusString && String(statusString).toUpperCase().includes("ĐÃ DUYỆT");
+    const fieldsToLockAll = ['hoten', 'ngaysinh', 'nganh', 'khoa', 'doituonguutien', 'khuvucuutien', 'doituongdauvao', 'namtt', 'hedaotao', 'htdaotao'];
     
-    const fieldsToLock = ['hoten', 'ngaysinh', 'nganh', 'khoa', 'doituonguutien', 'khuvucuutien', 'doituongdauvao', 'namtt', 'hedaotao', 'htdaotao'];
-    fieldsToLock.forEach(id => {
-        const el = document.getElementById(id);
-        if(el) {
-            el.disabled = isApproved;
-            el.style.background = isApproved ? "#e9ecef" : "";
-            if (isApproved) {
-                el.style.opacity = "0.7";
-                el.style.cursor = "not-allowed";
-            }
-        }
+    // MỞ KHÓA TẤT CẢ TRƯỚC KHI XÉT DUYỆT
+    fieldsToLockAll.forEach(id => {
+        let el = document.getElementById(id);
+        if(el) { el.disabled = false; el.style.background = ""; el.style.opacity = "1"; el.style.cursor = "auto"; }
     });
-    
     document.querySelectorAll('.score-val').forEach(el => {
-        el.disabled = isApproved;
-        el.style.background = isApproved ? "#e9ecef" : "";
-        if (isApproved) {
-            el.style.opacity = "0.7";
-            el.style.cursor = "not-allowed";
-        }
+        el.disabled = false; el.style.background = ""; el.style.opacity = "1"; el.style.cursor = "auto";
     });
-    
+
     if(isApproved) {
-        showAlert("Hồ sơ này đã được DUYỆT TRÚNG TUYỂN.\n\n👉 Bạn chỉ có thể tick bổ sung các hồ sơ còn thiếu, KHÔNG ĐƯỢC PHÉP sửa đổi Thông tin cá nhân, Ngành học hay Điểm số!", "🔒 HỒ SƠ ĐÃ KHÓA BẢO VỆ", false);
+        // LUẬT 1: NẾU ĐÃ DUYỆT -> KHÓA CHẾT TẤT CẢ (CHỈ CHO TICK HỒ SƠ)
+        fieldsToLockAll.forEach(id => {
+            let el = document.getElementById(id);
+            if(el) { el.disabled = true; el.style.background = "#e9ecef"; el.style.opacity = "0.7"; el.style.cursor = "not-allowed"; }
+        });
+        document.querySelectorAll('.score-val').forEach(el => {
+            el.disabled = true; el.style.background = "#e9ecef"; el.style.opacity = "0.7"; el.style.cursor = "not-allowed";
+        });
+        showAlert("Hồ sơ này đã ĐƯỢC DUYỆT TRÚNG TUYỂN.\n\n👉 Bạn chỉ có thể TÍCH BỔ SUNG hồ sơ đính kèm, KHÔNG ĐƯỢC PHÉP sửa thông tin cá nhân hay điểm số!", "🔒 HỒ SƠ ĐÃ KHÓA BẢO VỆ", false);
     } else {
-        showAlert("Hệ thống đã TỰ ĐỘNG ĐIỀN LẠI thông tin cũ và tick sẵn các giấy tờ đã nộp.\n\nHãy TICK THÊM vào các loại giấy tờ mới nộp", "ĐÃ TẢI LẠI HỒ SƠ", false);
+        // LUẬT 2: NẾU CHỜ DUYỆT -> CHỈ KHÓA Ô NGÀNH
+        let nganhEl = document.getElementById('nganh');
+        if(nganhEl) {
+            nganhEl.disabled = true; 
+            nganhEl.style.background = "#e9ecef"; 
+            nganhEl.style.opacity = "0.7"; 
+            nganhEl.style.cursor = "not-allowed";
+        }
+        showAlert("Hệ thống đã tải lại thông tin cũ.\n\n👉 Bạn có thể bổ sung hồ sơ đính kèm và chỉnh sửa mọi thông tin, NGOẠI TRỪ NGÀNH XÉT TUYỂN.", "ĐÃ TẢI LẠI HỒ SƠ", false);
     }
 }
 
