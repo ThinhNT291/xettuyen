@@ -15,28 +15,22 @@
 <div class="container">
     <h2>📝 CỔNG NHẬP LIỆU HỒ SƠ TUYỂN SINH</h2>
     
-    <div class="section-title">I. THÔNG TIN CHUNG</div>
  <div class="section-title">I. THÔNG TIN CHUNG</div>
     <div class="form-grid">
         <!-- ĐẢO HỌ TÊN LÊN TRÊN -->
         <div class="form-group">
             <label for="hoten">Họ và tên <span class="req">(*)</span>:</label>
+            <button type="button" class="btn-mini" style="background: #f57c00; margin-bottom: 0;" onclick="openSearchModal()">🔍 Tìm hồ sơ cũ</button>
             <input type="text" id="hoten" placeholder="Nguyễn Văn A" required>
         </div>
-
         <!-- ĐẢO CCCD XUỐNG DƯỚI -->
         <div class="form-group">
             <div style="display: flex; justify-content: space-between; align-items: flex-end; margin-bottom: 5px;">
                 <label for="cccd" style="margin-bottom: 0;">Số CCCD <span class="req">(*)</span>:</label> 
-                <button type="button" class="btn-mini" style="background: #f57c00; margin-bottom: 0;" onclick="openSearchModal()">🔍 Tìm hồ sơ cũ</button>
             </div>
             <input type="text" id="cccd" placeholder="Nhập 12 số CCCD" required>
         </div>
         
-        <div class="form-group">
-            <label for="hoten">Họ và tên <span class="req">(*)</span>:</label>
-            <input type="text" id="hoten" placeholder="Nguyễn Văn A" required>
-        </div>
         <div class="form-group">
             <label for="ngaysinh">Ngày sinh <span class="req">(*)</span>:</label>
             <input type="date" id="ngaysinh" required>
