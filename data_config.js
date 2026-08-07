@@ -33,18 +33,20 @@ const DICT_NGANH = {
     "Quản trị dịch vụ du lịch và lữ hành": ["A01", "C00", "C03", "C04", "D01", "D04", "D45", "D65", "X25", "X37"]
 };
 
+// ĐÃ CẬP NHẬT: RÚT PHIẾU ĐK KHỎI CHUNG, CHO VÀO TIÊN QUYẾT CỦA MỌI ĐỐI TƯỢNG
 const DICT_HO_SO = {
     chung: [
-        { id: "doc_phieu_dk", name: "Phiếu đăng ký dự tuyển" }, { id: "doc_syll", name: "Sơ yếu lý lịch" },
-        { id: "doc_cccd", name: "Bản sao CCCD" }, { id: "doc_khaisinh", name: "Bản sao Giấy khai sinh" },
+        { id: "doc_syll", name: "Sơ yếu lý lịch" },
+        { id: "doc_cccd", name: "Bản sao CCCD" }, 
+        { id: "doc_khaisinh", name: "Bản sao Giấy khai sinh" },
         { id: "doc_anhthe", name: "Ảnh thẻ" }
     ],
     tien_quyet: {
-        "Tốt nghiệp THPT": [ { id: "doc_bang_thpt", name: "Bản sao Bằng THPT/Giấy báo điểm" }, { id: "doc_hocba_thpt", name: "Bản sao Học bạ THPT" } ],
-        "Tốt nghiệp Trung cấp sau 2022": [ { id: "doc_bang_tc", name: "Bản sao Bằng Trung cấp" }, { id: "doc_diem_tc", name: "Bảng điểm Trung cấp" }, { id: "doc_ktvh_thpt", name: "Bằng THPT/GCN đủ KL KTVH THPT" } ],
-        "Tốt nghiệp Cao đẳng": [ { id: "doc_bang_cd", name: "Bằng Cao đẳng" }, { id: "doc_diem_cd", name: "Bảng điểm Cao đẳng" } ],
-        "Tốt nghiệp Đại học": [ { id: "doc_bang_dh", name: "Bằng Đại học" }, { id: "doc_diem_dh", name: "Bảng điểm Đại học" } ],
-        "Tốt nghiệp Trung cấp trước 2022": [ { id: "doc_gcn_gdpt", name: "GCN hoàn thành CT GDPT" }, { id: "doc_bang_tc_truoc", name: "Bản sao Bằng TC trước 2022" }, { id: "doc_diem_tc_truoc", name: "Bảng điểm TC trước 2022" } ],
-        "Trung học nghề": [ { id: "doc_gcn_gdpt", name: "GCN hoàn thành CT GDPT" }, { id: "doc_bang_tc_truoc", name: "Bản sao Bằng TC trước 2022" }, { id: "doc_diem_tc_truoc", name: "Bảng điểm TC trước 2022" } ]
+        "Tốt nghiệp THPT": [ { id: "doc_phieu_dk", name: "Phiếu đăng ký dự tuyển" }, { id: "doc_bang_thpt", name: "Bản sao Bằng THPT/Giấy báo điểm" }, { id: "doc_hocba_thpt", name: "Bản sao Học bạ THPT" } ],
+        "Tốt nghiệp Trung cấp sau 2022": [ { id: "doc_phieu_dk", name: "Phiếu đăng ký dự tuyển" }, { id: "doc_bang_tc", name: "Bản sao Bằng Trung cấp" }, { id: "doc_diem_tc", name: "Bảng điểm Trung cấp" }, { id: "doc_ktvh_thpt", name: "Bằng THPT/GCN đủ KL KTVH THPT" } ],
+        "Tốt nghiệp Cao đẳng": [ { id: "doc_phieu_dk", name: "Phiếu đăng ký dự tuyển" }, { id: "doc_bang_cd", name: "Bằng Cao đẳng" }, { id: "doc_diem_cd", name: "Bảng điểm Cao đẳng" } ],
+        "Tốt nghiệp Đại học": [ { id: "doc_phieu_dk", name: "Phiếu đăng ký dự tuyển" }, { id: "doc_bang_dh", name: "Bằng Đại học" }, { id: "doc_diem_dh", name: "Bảng điểm Đại học" } ],
+        "Tốt nghiệp Trung cấp trước 2022": [ { id: "doc_phieu_dk", name: "Phiếu đăng ký dự tuyển" }, { id: "doc_gcn_gdpt", name: "GCN hoàn thành CT GDPT" }, { id: "doc_bang_tc_truoc", name: "Bản sao Bằng TC trước 2022" }, { id: "doc_diem_tc_truoc", name: "Bảng điểm TC trước 2022" } ],
+        "Trung học nghề": [ { id: "doc_phieu_dk", name: "Phiếu đăng ký dự tuyển" }, { id: "doc_gcn_gdpt", name: "GCN hoàn thành CT GDPT" }, { id: "doc_bang_tc_truoc", name: "Bản sao Bằng TC trước 2022" }, { id: "doc_diem_tc_truoc", name: "Bảng điểm TC trước 2022" } ]
     }
 };
