@@ -104,26 +104,52 @@ function autoCheckAdmission() {
         iconEl.innerHTML = '🟢'; titleEl.innerHTML = "ĐỦ ĐIỀU KIỆN SƠ TUYỂN CHÍNH THỨC"; titleEl.style.color = '#155724';
     }
 }
-
 // ==========================================
-// CÁC HÀM TIỆN ÍCH KHÁC
+// CÁC HÀM TIỆN ÍCH KHÁC (TRA CỨU KHU VỰC)
 // ==========================================
 function openLookupModal() { 
     document.getElementById('lookupModal').style.display = 'flex'; 
-    document.getElementById('searchInput').value = "";
+    const searchInput = document.getElementById('searchInput');
+    searchInput.value = "";
+    
+    // 1. Tự động trỏ chuột vào ô tìm kiếm ngay khi mở
+    setTimeout(() => searchInput.focus(), 100);
+
+    // 2. Kích hoạt tính năng "Vừa gõ vừa tìm" (Real-time)
+    if (!searchInput.hasAttribute('data-listening')) {
+        searchInput.addEventListener('input', searchLookupTable);
+        searchInput.setAttribute('data-listening', 'true');
+    }
+
     if (lookupData.length === 0) { loadLookupData(); } 
-    else { document.getElementById('lookupContent').innerHTML = '<p style="text-align: center; color: #0288d1; font-weight: bold; margin-top: 30px;">✅ Hệ thống đã sẵn sàng. Vui lòng nhập từ khóa để tra cứu!</p>'; }
+    else {
+        document.getElementById('lookupContent').innerHTML = `
+            <div style="color: #0288d1; margin-top: 30px; font-size: 0.67em;">
+                <p style="text-align: center; font-weight: bold;">ℹ️ Căn cứ xác định khu vực tuyển sinh của cá nhân thí sinh:</p>
+                <p style="text-align: left;">KVTS của mỗi thí sinh được xác định theo địa điểm trường mà thí sinh đã học lâu nhất trong thời gian học cấp THPT (hoặc trung cấp, trung học nghề).</p>
+                <p style="text-align: left;">Nếu thời gian học (dài nhất) tại các khu vực tương đương nhau thì xác định theo khu vực của trường mà thí sinh theo học sau cùng.</p>
+                <p style="text-align: left;">Thí sinh được hưởng chính sách ưu tiên khu vực theo quy định trong năm tốt nghiệp THPT (hoặc trung cấp, trung học nghề) và một năm kế tiếp.</p>
+            </div>
+        `;
+    }
 }
 
 function closeLookupModal() { document.getElementById('lookupModal').style.display = 'none'; }
 
 function loadLookupData() {
-    document.getElementById('lookupContent').innerHTML = '<p style="text-align: center; color: #666; font-weight: bold; margin-top: 30px;">⏳ Đang tải kho dữ liệu, vui lòng chờ trong giây lát...</p>';
+    document.getElementById('lookupContent').innerHTML = '<p style="text-align: center; color: #666; font-weight: bold; margin-top: 30px;">⏳ Please wait...</p>';
     Papa.parse(KV_CSV_URL, {
         download: true, header: true, skipEmptyLines: true,
         complete: function(results) {
             lookupData = results.data;
-            document.getElementById('lookupContent').innerHTML = '<p style="text-align: center; color: #0288d1; font-weight: bold; margin-top: 30px;">✅ Tải dữ liệu thành công! Vui lòng nhập từ khóa vào ô tìm kiếm bên trên.</p>';
+            document.getElementById('lookupContent').innerHTML = `
+                <div style="color: #0288d1; margin-top: 30px; font-size: 0.67em;">
+                    <p style="text-align: center; font-weight: bold;">ℹ️ Căn cứ xác định khu vực tuyển sinh của cá nhân thí sinh:</p>
+                    <p style="text-align: left;">KVTS của mỗi thí sinh được xác định theo địa điểm trường mà thí sinh đã học lâu nhất trong thời gian học cấp THPT (hoặc trung cấp, trung học nghề).</p>
+                    <p style="text-align: left;">Nếu thời gian học (dài nhất) tại các khu vực tương đương nhau thì xác định theo khu vực của trường mà thí sinh theo học sau cùng.</p>
+                    <p style="text-align: left;">Thí sinh được hưởng chính sách ưu tiên khu vực theo quy định trong năm tốt nghiệp THPT (hoặc trung cấp, trung học nghề) và một năm kế tiếp.</p>
+                </div>
+            `;
         },
         error: function() { document.getElementById('lookupContent').innerHTML = '<p style="color:red; text-align:center;">❌ Lỗi kết nối! Không thể tải dữ liệu khu vực.</p>'; }
     });
@@ -131,7 +157,7 @@ function loadLookupData() {
 
 function renderLookupTable(data) {
     if (data.length === 0) {
-        document.getElementById('lookupContent').innerHTML = '<p style="text-align:center; color: #d32f2f; margin-top: 20px;">❌ Không tìm thấy kết quả phù hợp với từ khóa.</p>';
+        document.getElementById('lookupContent').innerHTML = '<p style="text-align:center; color: #d32f2f; margin-top: 20px;">❌ Không tìm thấy kết quả phù hợp.</p>';
         return;
     }
     
@@ -162,19 +188,29 @@ function renderLookupTable(data) {
     });
     html += '</tbody></table>';
     
-    if (data.length > 100) { html += `<p style="text-align:center; color:#e65100; font-size:12px; margin-top:15px; font-weight:bold;">⚠️ Chỉ hiển thị 100 kết quả đầu tiên. Vui lòng gõ từ khóa chi tiết hơn nếu chưa tìm thấy.</p>`; }
+    // 3. Hiển thị chữ in nghiêng nếu quá 100 dòng
+    if (data.length > 100) { 
+        html += `<p style="text-align:center; color:#e65100; font-size:12px; margin-top:15px; font-weight:bold; font-style:italic;">⚠️ Chỉ hiển thị 100 kết quả đầu tiên. Gõ chi tiết hơn để thu hẹp phạm vi tìm kiếm.</p>`; 
+    }
     document.getElementById('lookupContent').innerHTML = html;
 }
 
 function searchLookupTable() {
     let keyword = document.getElementById('searchInput').value.toLowerCase().trim();
     if (!keyword) {
-        document.getElementById('lookupContent').innerHTML = '<p style="text-align: center; color: #0288d1; font-weight: bold; margin-top: 30px;">✅ Vui lòng nhập từ khóa vào ô tìm kiếm bên trên.</p>'; return;
+        document.getElementById('lookupContent').innerHTML = `
+            <div style="color: #0288d1; margin-top: 30px; font-size: 0.67em;">
+                <p style="text-align: center; font-weight: bold;">ℹ️ Căn cứ xác định khu vực tuyển sinh của cá nhân thí sinh:</p>
+                <p style="text-align: left;">KVTS của mỗi thí sinh được xác định theo địa điểm trường mà thí sinh đã học lâu nhất trong thời gian học cấp THPT (hoặc trung cấp, trung học nghề).</p>
+                <p style="text-align: left;">Nếu thời gian học (dài nhất) tại các khu vực tương đương nhau thì xác định theo khu vực của trường mà thí sinh theo học sau cùng.</p>
+                <p style="text-align: left;">Thí sinh được hưởng chính sách ưu tiên khu vực theo quy định trong năm tốt nghiệp THPT (hoặc trung cấp, trung học nghề) và một năm kế tiếp.</p>
+            </div>
+        `;
+        return;
     }
     let filtered = lookupData.filter(row => { return Object.values(row).some(val => String(val).toLowerCase().includes(keyword)); });
     renderLookupTable(filtered);
 }
-
 // ==========================================
 // CÁC HÀM MODAL TÙY CHỈNH
 // ==========================================
@@ -536,7 +572,7 @@ let currentSearchResults = [];
 function openSearchModal() {
     document.getElementById('searchCandidateModal').style.display = 'flex';
     document.getElementById('searchCandidateInput').value = "";
-    document.getElementById('searchCandidateContent').innerHTML = '<p style="text-align: center; color: #666; font-style: italic; margin-top: 30px;">Nhập Họ tên hoặc Số Căn cước và bấm Tìm kiếm...</p>';
+    document.getElementById('searchCandidateContent').innerHTML = '<p style="text-align: center; color: #666; font-style: italic; margin-top: 30px;">Nhập Họ tên hoặc Số Căn cước</p>';
     document.getElementById('searchCandidateInput').focus();
 }
 
@@ -559,23 +595,33 @@ async function executeSearchCandidate() {
         
         if (result.status === "success") {
             currentSearchResults = result.data;
-            let html = '<table style="width: 100%; border-collapse: collapse; font-size: 12px; text-align: left;">';
-            html += '<thead style="background: #e0f2f1; position: sticky; top: 0;"><tr><th style="padding:8px; border:1px solid #ddd; text-align:center;">STT</th><th style="padding:8px; border:1px solid #ddd;">HỌ TÊN</th><th style="padding:8px; border:1px solid #ddd;">CĂN CƯỚC</th><th style="padding:8px; border:1px solid #ddd;">NGÀNH</th><th style="padding:8px; border:1px solid #ddd;">TRẠNG THÁI</th><th style="padding:8px; border:1px solid #ddd; text-align:center;">THAO TÁC</th></tr></thead><tbody>';
+            
+            // Xây dựng bảng theo chuẩn combo-table (thu gọn, căn giữa)
+            let html = '<div style="display:flex; justify-content:center; width:100%; overflow-x: auto; padding: 10px 0;">';
+            html += '<table style="width: max-content !important; min-width: 90%; margin: 0 auto; border-collapse: collapse; background: #fff; box-shadow: 0 0 5px rgba(0,0,0,0.05);">';
+            html += '<thead style="background: #e0f2f1; color: #006666; font-weight: bold;"><tr>';
+            html += '<th style="border: 1px solid #e0e0e0; padding: 6px 12px; text-align: center; font-size: 12px; white-space: nowrap; position: sticky; top: 0; z-index: 10;">STT</th>';
+            html += '<th style="border: 1px solid #e0e0e0; padding: 6px 12px; text-align: left; font-size: 12px; white-space: nowrap; position: sticky; top: 0; z-index: 10;">HỌ TÊN</th>';
+            html += '<th style="border: 1px solid #e0e0e0; padding: 6px 12px; text-align: center; font-size: 12px; white-space: nowrap; position: sticky; top: 0; z-index: 10;">CĂN CƯỚC</th>';
+            html += '<th style="border: 1px solid #e0e0e0; padding: 6px 12px; text-align: left; font-size: 12px; white-space: nowrap; position: sticky; top: 0; z-index: 10;">NGÀNH</th>';
+            html += '<th style="border: 1px solid #e0e0e0; padding: 6px 12px; text-align: center; font-size: 12px; white-space: nowrap; position: sticky; top: 0; z-index: 10;">TRẠNG THÁI</th>';
+            html += '<th style="border: 1px solid #e0e0e0; padding: 6px 12px; text-align: center; font-size: 12px; white-space: nowrap; position: sticky; top: 0; z-index: 10;">THAO TÁC</th>';
+            html += '</tr></thead><tbody>';
             
             result.data.forEach((item, index) => {
                 let badgeColor = item.trangThai.includes("Đã duyệt") ? "#2e7d32" : (item.trangThai.includes("thiếu") ? "#d84315" : "#0288d1");
-                html += `<tr onmouseover="this.style.background='#f5f5f5'" onmouseout="this.style.background='none'">
-                    <td style="padding:8px; border:1px solid #ddd; text-align:center;">${index + 1}</td>
-                    <td style="padding:8px; border:1px solid #ddd; font-weight:bold;">${item.hoTen}</td>
-                    <td style="padding:8px; border:1px solid #ddd;">${item.cccd}</td>
-                    <td style="padding:8px; border:1px solid #ddd;">${item.nganh}</td>
-                    <td style="padding:8px; border:1px solid #ddd; font-weight:bold; color: ${badgeColor};">${item.trangThai}</td>
-                    <td style="padding:8px; border:1px solid #ddd; text-align:center;">
-                        <button onclick="loadOldCandidate(${index})" style="background:#0288d1; color:white; border:none; padding:5px 10px; border-radius:3px; cursor:pointer; font-weight:bold;">✏️ Sửa</button>
+                html += `<tr onmouseover="this.style.background='#fff8e1'" onmouseout="this.style.background='none'">
+                    <td style="border: 1px solid #e0e0e0; padding: 6px 12px; text-align: center; font-size: 12px; white-space: nowrap;">${index + 1}</td>
+                    <td style="border: 1px solid #e0e0e0; padding: 6px 12px; text-align: left; font-size: 12px; white-space: nowrap; font-weight:bold;">${item.hoTen}</td>
+                    <td style="border: 1px solid #e0e0e0; padding: 6px 12px; text-align: center; font-size: 12px; white-space: nowrap; font-weight:bold; color: #d84315;">${item.cccd}</td>
+                    <td style="border: 1px solid #e0e0e0; padding: 6px 12px; text-align: left; font-size: 12px; white-space: nowrap;">${item.nganh}</td>
+                    <td style="border: 1px solid #e0e0e0; padding: 6px 12px; text-align: center; font-size: 12px; white-space: nowrap; font-weight:bold; color: ${badgeColor};">${item.trangThai}</td>
+                    <td style="border: 1px solid #e0e0e0; padding: 4px 12px; text-align: center; white-space: nowrap;">
+                        <button onclick="loadOldCandidate(${index})" style="background:#0288d1; color:white; border:none; padding:5px 12px; border-radius:3px; cursor:pointer; font-weight:bold; font-size: 11px;">✏️ Sửa</button>
                     </td>
                 </tr>`;
             });
-            html += '</tbody></table>';
+            html += '</tbody></table></div>';
             contentDiv.innerHTML = html;
         } else if (result.status === "not_found") {
             contentDiv.innerHTML = `<p style="text-align: center; color: #d32f2f; font-weight: bold; margin-top: 30px;">❌ ${result.message}</p>`;
@@ -586,7 +632,6 @@ async function executeSearchCandidate() {
         contentDiv.innerHTML = '<p style="text-align: center; color: #d32f2f; font-weight: bold; margin-top: 30px;">❌ Lỗi kết nối mạng, vui lòng thử lại.</p>';
     }
 }
-
 function loadOldCandidate(index) {
     closeSearchModal();
     currentAction = "UPDATE";
@@ -615,7 +660,7 @@ function lockSectionsIfApproved(statusString) {
         document.querySelectorAll('.score-val').forEach(el => {
             el.disabled = true; el.style.background = "#e9ecef"; el.style.opacity = "0.7"; el.style.cursor = "not-allowed";
         });
-        showAlert("Hồ sơ này đã ĐƯỢC DUYỆT TRÚNG TUYỂN.\n\n👉 Bạn chỉ có thể TÍCH BỔ SUNG hồ sơ đính kèm, KHÔNG ĐƯỢC PHÉP sửa thông tin cá nhân hay điểm số!", "🔒 HỒ SƠ ĐÃ KHÓA BẢO VỆ", false);
+        showAlert("Hồ sơ này đã ĐƯỢC DUYỆT TRÚNG TUYỂN.\n\n👉 Bạn chỉ có thể TÍCH BỔ SUNG hồ sơ đính kèm, KHÔNG ĐƯỢC PHÉP sửa thông tin cá nhân hay điểm số!", "🔒 Hồ sơ đã duyệt trúng tuyển", false);
     } else {
         // LUẬT 2: NẾU CHỜ DUYỆT -> CHỈ KHÓA Ô NGÀNH
         let nganhEl = document.getElementById('nganh');
@@ -625,7 +670,7 @@ function lockSectionsIfApproved(statusString) {
             nganhEl.style.opacity = "0.7"; 
             nganhEl.style.cursor = "not-allowed";
         }
-        showAlert("Hệ thống đã tải lại thông tin cũ.\n\n👉 Bạn có thể bổ sung hồ sơ đính kèm và chỉnh sửa mọi thông tin, NGOẠI TRỪ NGÀNH XÉT TUYỂN.", "ĐÃ TẢI LẠI HỒ SƠ", false);
+        showAlert("Hồ sơ đã trả về.\n\n👉 Bạn có thể bổ sung thông tin, NGOẠI TRỪ NGÀNH XÉT TUYỂN.", "Đã tải lại hồ sơ", false);
     }
 }
 
@@ -752,6 +797,31 @@ window.addEventListener('keydown', function(event) {
         const customModal = document.getElementById('customModal');
         if (customModal && customModal.style.display === 'flex') {
             customModal.style.display = 'none';
+        }
+    }
+});
+
+// ==========================================
+// TÍNH NĂNG BẤM PHÍM ESC ĐỂ ĐÓNG POPUP
+// ==========================================
+window.addEventListener('keydown', function(event) {
+    if (event.key === "Escape") {
+        // Đóng hộp thoại tra cứu mã trường/khu vực
+        const lookupModal = document.getElementById('lookupModal');
+        if (lookupModal && lookupModal.style.display === 'flex') {
+            closeLookupModal();
+        }
+        
+        // Đóng hộp thoại cảnh báo/xác nhận chung
+        const customModal = document.getElementById('customModal');
+        if (customModal && customModal.style.display === 'flex') {
+            customModal.style.display = 'none';
+        }
+
+        // BỔ SUNG ĐÓNG KHUNG TÌM KIẾM HỒ SƠ
+        const searchCandidateModal = document.getElementById('searchCandidateModal');
+        if (searchCandidateModal && searchCandidateModal.style.display === 'flex') {
+            closeSearchModal();
         }
     }
 });
