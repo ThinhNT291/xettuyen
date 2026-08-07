@@ -204,14 +204,16 @@ function renderLookupTable(data) {
 function searchLookupTable() {
     let keyword = document.getElementById('searchInput').value.toLowerCase().trim();
     if (!keyword) {
-        document.getElementById('lookupContent').innerHTML = `
-            <div style="color: #0288d1; margin-top: 30px; font-size: 0.67em;">
-                <p style="text-align: center; font-weight: bold;">ℹ️ Căn cứ xác định khu vực tuyển sinh của cá nhân thí sinh:</p>
-                <p style="text-align: left;">KVTS của mỗi thí sinh được xác định theo địa điểm trường mà thí sinh đã học lâu nhất trong thời gian học cấp THPT (hoặc trung cấp, trung học nghề).</p>
-                <p style="text-align: left;">Nếu thời gian học (dài nhất) tại các khu vực tương đương nhau thì xác định theo khu vực của trường mà thí sinh theo học sau cùng.</p>
-                <p style="text-align: left;">Thí sinh được hưởng chính sách ưu tiên khu vực theo quy định trong năm tốt nghiệp THPT (hoặc trung cấp, trung học nghề) và một năm kế tiếp.</p>
-            </div>
-        `;
+document.getElementById('lookupContent').innerHTML = `
+    <div style="color: #0288d1; margin-top: 0; font-size: 1em;">
+        <p style="text-align: center; font-weight: bold;">ℹ️ Căn cứ xác định khu vực tuyển sinh của cá nhân thí sinh:</p>
+        <ul style="text-align: left; padding-left: 20px; margin: 0;">
+            <li>KVTS của mỗi thí sinh được xác định theo địa điểm trường mà thí sinh đã học lâu nhất trong thời gian học cấp THPT (hoặc trung cấp, trung học nghề).</li>
+            <li>Nếu thời gian học (dài nhất) tại các khu vực tương đương nhau thì xác định theo khu vực của trường mà thí sinh theo học sau cùng.</li>
+            <li>Thí sinh được hưởng chính sách ưu tiên khu vực theo quy định trong năm tốt nghiệp THPT (hoặc trung cấp, trung học nghề) và một năm kế tiếp.</li>
+        </ul>
+    </div>
+`;
         return;
     }
     let filtered = lookupData.filter(row => { return Object.values(row).some(val => String(val).toLowerCase().includes(keyword)); });
