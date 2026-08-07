@@ -123,14 +123,18 @@ function openLookupModal() {
 
     if (lookupData.length === 0) { loadLookupData(); } 
     else {
-        document.getElementById('lookupContent').innerHTML = `
-            <div style="color: #0288d1; margin-top: 30px; font-size: 0.67em;">
-                <p style="text-align: center; font-weight: bold;">ℹ️ Căn cứ xác định khu vực tuyển sinh của cá nhân thí sinh:</p>
-                <p style="text-align: left;">KVTS của mỗi thí sinh được xác định theo địa điểm trường mà thí sinh đã học lâu nhất trong thời gian học cấp THPT (hoặc trung cấp, trung học nghề).</p>
-                <p style="text-align: left;">Nếu thời gian học (dài nhất) tại các khu vực tương đương nhau thì xác định theo khu vực của trường mà thí sinh theo học sau cùng.</p>
-                <p style="text-align: left;">Thí sinh được hưởng chính sách ưu tiên khu vực theo quy định trong năm tốt nghiệp THPT (hoặc trung cấp, trung học nghề) và một năm kế tiếp.</p>
-            </div>
-        `;
+document.getElementById('lookupContent').innerHTML = `
+    <div style="color: #0288d1; margin-top: 0; font-size: 1em;">
+        <p style="text-align: center; font-weight: bold;">ℹ️ Căn cứ xác định khu vực tuyển sinh của cá nhân thí sinh:</p>
+        <ul style="text-align: left; padding-left: 20px; margin: 0;">
+            <li>KVTS của mỗi thí sinh được xác định theo địa điểm trường mà thí sinh đã học lâu nhất trong thời gian học cấp THPT (hoặc trung cấp, trung học nghề).</li>
+            <li>Nếu thời gian học (dài nhất) tại các khu vực tương đương nhau thì xác định theo khu vực của trường mà thí sinh theo học sau cùng.</li>
+            <li>Thí sinh được hưởng chính sách ưu tiên khu vực theo quy định trong năm tốt nghiệp THPT (hoặc trung cấp, trung học nghề) và một năm kế tiếp.</li>
+        </ul>
+    </div>
+`;
+
+
     }
 }
 
@@ -142,17 +146,17 @@ function loadLookupData() {
         download: true, header: true, skipEmptyLines: true,
         complete: function(results) {
             lookupData = results.data;
-            document.getElementById('lookupContent').innerHTML = `
-                <div style="color: #0288d1; margin-top: 30px; font-size: 0.67em;">
-                    <p style="text-align: center; font-weight: bold;">ℹ️ Căn cứ xác định khu vực tuyển sinh của cá nhân thí sinh:</p>
-                    <p style="text-align: left;">KVTS của mỗi thí sinh được xác định theo địa điểm trường mà thí sinh đã học lâu nhất trong thời gian học cấp THPT (hoặc trung cấp, trung học nghề).</p>
-                    <p style="text-align: left;">Nếu thời gian học (dài nhất) tại các khu vực tương đương nhau thì xác định theo khu vực của trường mà thí sinh theo học sau cùng.</p>
-                    <p style="text-align: left;">Thí sinh được hưởng chính sách ưu tiên khu vực theo quy định trong năm tốt nghiệp THPT (hoặc trung cấp, trung học nghề) và một năm kế tiếp.</p>
-                </div>
-            `;
-        },
-        error: function() { document.getElementById('lookupContent').innerHTML = '<p style="color:red; text-align:center;">❌ Lỗi kết nối! Không thể tải dữ liệu khu vực.</p>'; }
-    });
+document.getElementById('lookupContent').innerHTML = `
+    <div style="color: #0288d1; margin-top: 0; font-size: 1em;">
+        <p style="text-align: center; font-weight: bold;">ℹ️ Căn cứ xác định khu vực tuyển sinh của cá nhân thí sinh:</p>
+        <ul style="text-align: left; padding-left: 20px; margin: 0;">
+            <li>KVTS của mỗi thí sinh được xác định theo địa điểm trường mà thí sinh đã học lâu nhất trong thời gian học cấp THPT (hoặc trung cấp, trung học nghề).</li>
+            <li>Nếu thời gian học (dài nhất) tại các khu vực tương đương nhau thì xác định theo khu vực của trường mà thí sinh theo học sau cùng.</li>
+            <li>Thí sinh được hưởng chính sách ưu tiên khu vực theo quy định trong năm tốt nghiệp THPT (hoặc trung cấp, trung học nghề) và một năm kế tiếp.</li>
+        </ul>
+    </div>
+`;
+
 }
 
 function renderLookupTable(data) {
@@ -579,8 +583,16 @@ function openSearchModal() {
 function closeSearchModal() { document.getElementById('searchCandidateModal').style.display = 'none'; }
 
 async function executeSearchCandidate() {
-    const keyword = document.getElementById('searchCandidateInput').value.trim();
-    if (!keyword) { showAlert("Chưa nhập từ khóa!", "LỖI NHẬP LIỆU"); return; }
+    const searchInput = document.getElementById('searchCandidateInput');
+    const keyword = searchInput.value.trim();
+    
+    // ĐÃ VÔ HIỆU HÓA ALERT: CHỈ BÔI ĐỎ Ô NHẬP LIỆU RỒI DỪNG LẠI NẾU RỖNG
+    if (!keyword) { 
+        searchInput.style.borderColor = "red";
+        setTimeout(() => searchInput.style.borderColor = "#ccc", 1500); // Tự nhả màu đỏ sau 1.5 giây
+        searchInput.focus();
+        return; 
+    }
     
     const contentDiv = document.getElementById('searchCandidateContent');
     contentDiv.innerHTML = '<p style="text-align: center; color: #0288d1; font-weight: bold; margin-top: 30px;">⏳ Please wait...</p>';
@@ -798,27 +810,8 @@ window.addEventListener('keydown', function(event) {
         if (customModal && customModal.style.display === 'flex') {
             customModal.style.display = 'none';
         }
-    }
-});
 
-// ==========================================
-// TÍNH NĂNG BẤM PHÍM ESC ĐỂ ĐÓNG POPUP
-// ==========================================
-window.addEventListener('keydown', function(event) {
-    if (event.key === "Escape") {
-        // Đóng hộp thoại tra cứu mã trường/khu vực
-        const lookupModal = document.getElementById('lookupModal');
-        if (lookupModal && lookupModal.style.display === 'flex') {
-            closeLookupModal();
-        }
-        
-        // Đóng hộp thoại cảnh báo/xác nhận chung
-        const customModal = document.getElementById('customModal');
-        if (customModal && customModal.style.display === 'flex') {
-            customModal.style.display = 'none';
-        }
-
-        // BỔ SUNG ĐÓNG KHUNG TÌM KIẾM HỒ SƠ
+        // Đóng hộp thoại tìm kiếm hồ sơ cũ
         const searchCandidateModal = document.getElementById('searchCandidateModal');
         if (searchCandidateModal && searchCandidateModal.style.display === 'flex') {
             closeSearchModal();
