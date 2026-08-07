@@ -17,12 +17,12 @@
     
 <div class="section-title">I. THÔNG TIN CHUNG</div>
     <div class="form-grid">
-   <!-- ĐẢO HỌ TÊN LÊN TRÊN -->
+       <!-- ĐẢO HỌ TÊN LÊN TRÊN -->
         <div class="form-group">
-            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 5px;">
-                <label for="hoten" style="margin-bottom: 0; white-space: nowrap;">Họ và tên <span class="req">(*)</span>:</label>
-                <!-- KHÓA KÍCH THƯỚC NÚT TÌM KIẾM CHỐNG TRÀN -->
-                <button type="button" class="btn-mini" style="background: #f57c00; margin-bottom: 0; white-space: nowrap; flex: 0 0 auto; padding: 4px 10px; border-radius: 4px;" onclick="openSearchModal()">🔍 Tìm hồ sơ cũ</button>
+            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 5px; flex-wrap: wrap; gap: 5px;">
+                <label for="hoten" style="margin-bottom: 0;">Họ và tên <span class="req">(*)</span>:</label>
+                <!-- ĐÃ XÓA CLASS btn-mini, DÙNG STYLE ĐỘC LẬP ĐỂ CHỐNG TRÀN TRÊN MOBILE -->
+                <button type="button" style="background: #f57c00; color: white; border: none; padding: 5px 12px; border-radius: 4px; font-size: 13px; font-weight: bold; cursor: pointer; box-shadow: 0 1px 3px rgba(0,0,0,0.2); white-space: nowrap;" onclick="openSearchModal()">🔍 Tìm HS cũ</button>
             </div>
             <input type="text" id="hoten" placeholder="Nguyễn Văn A" required>
         </div>
