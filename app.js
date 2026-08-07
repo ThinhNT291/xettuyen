@@ -146,17 +146,19 @@ function loadLookupData() {
         download: true, header: true, skipEmptyLines: true,
         complete: function(results) {
             lookupData = results.data;
-document.getElementById('lookupContent').innerHTML = `
-    <div style="color: #0288d1; margin-top: 0; font-size: 1em;">
-        <p style="text-align: center; font-weight: bold;">ℹ️ Căn cứ xác định khu vực tuyển sinh của cá nhân thí sinh:</p>
-        <ul style="text-align: left; padding-left: 20px; margin: 0;">
-            <li>KVTS của mỗi thí sinh được xác định theo địa điểm trường mà thí sinh đã học lâu nhất trong thời gian học cấp THPT (hoặc trung cấp, trung học nghề).</li>
-            <li>Nếu thời gian học (dài nhất) tại các khu vực tương đương nhau thì xác định theo khu vực của trường mà thí sinh theo học sau cùng.</li>
-            <li>Thí sinh được hưởng chính sách ưu tiên khu vực theo quy định trong năm tốt nghiệp THPT (hoặc trung cấp, trung học nghề) và một năm kế tiếp.</li>
-        </ul>
-    </div>
-`;
-
+            document.getElementById('lookupContent').innerHTML = `
+                <div style="color: #0288d1; margin-top: 0; font-size: 1em;">
+                    <p style="text-align: center; font-weight: bold;">ℹ️ Căn cứ xác định khu vực tuyển sinh của cá nhân thí sinh:</p>
+                    <ul style="text-align: left; padding-left: 20px; margin: 0;">
+                        <li>KVTS của mỗi thí sinh được xác định theo địa điểm trường mà thí sinh đã học lâu nhất trong thời gian học cấp THPT (hoặc trung cấp, trung học nghề).</li>
+                        <li>Nếu thời gian học (dài nhất) tại các khu vực tương đương nhau thì xác định theo khu vực của trường mà thí sinh theo học sau cùng.</li>
+                        <li>Thí sinh được hưởng chính sách ưu tiên khu vực theo quy định trong năm tốt nghiệp THPT (hoặc trung cấp, trung học nghề) và một năm kế tiếp.</li>
+                    </ul>
+                </div>
+            `;
+        }, // <--- ÔNG ĐÁNH RƠI CÁI NGOẶC VÀ DẤU PHẨY NÀY NÈ
+        error: function() { document.getElementById('lookupContent').innerHTML = '<p style="color:red; text-align:center;">❌ Lỗi kết nối! Không thể tải dữ liệu khu vực.</p>'; }
+    }); // <--- VÀ CẢ CÁI NÀY NỮA
 }
 
 function renderLookupTable(data) {
