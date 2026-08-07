@@ -16,11 +16,18 @@
     <h2>📝 CỔNG NHẬP LIỆU HỒ SƠ TUYỂN SINH</h2>
     
     <div class="section-title">I. THÔNG TIN CHUNG</div>
+ <div class="section-title">I. THÔNG TIN CHUNG</div>
     <div class="form-grid">
+        <!-- ĐẢO HỌ TÊN LÊN TRÊN -->
+        <div class="form-group">
+            <label for="hoten">Họ và tên <span class="req">(*)</span>:</label>
+            <input type="text" id="hoten" placeholder="Nguyễn Văn A" required>
+        </div>
+
+        <!-- ĐẢO CCCD XUỐNG DƯỚI -->
         <div class="form-group">
             <div style="display: flex; justify-content: space-between; align-items: flex-end; margin-bottom: 5px;">
                 <label for="cccd" style="margin-bottom: 0;">Số CCCD <span class="req">(*)</span>:</label> 
-                <!-- NÚT KIỂM TRA CCCD -->
                 <button type="button" class="btn-mini" style="background: #f57c00; margin-bottom: 0;" onclick="openSearchModal()">🔍 Tìm hồ sơ cũ</button>
             </div>
             <input type="text" id="cccd" placeholder="Nhập 12 số CCCD" required>
@@ -357,9 +364,10 @@
                 <span style="font-weight: bold; font-size: 16px; color: #fff;">🔍 TÌM HỒ SƠ CŨ </span>
                 <span style="cursor: pointer; font-size: 20px; line-height: 1; color: #ffeb3b;" onclick="closeSearchModal()">✖</span>
             </div>
-            <div style="display: flex; gap: 10px; width: 100%;">
+          <div style="display: flex; gap: 8px; width: 100%;">
                 <input type="text" id="searchCandidateInput" placeholder="Nhập Họ tên hoặc vài số CCCD..." style="flex: 1; padding: 8px 12px; border: 1px solid #ccc; border-radius: 4px; font-size: 14px; color: #333;" onkeyup="if(event.key==='Enter') executeSearchCandidate()">
-                <button class="btn-modal-ok" onclick="executeSearchCandidate()" style="background: #ff9800;">Tìm kiếm</button>
+                <!-- NÚT TÌM KIẾM ĐÃ RÚT GỌN THÀNH ICON -->
+                <button class="btn-modal-ok" onclick="executeSearchCandidate()" style="background: #ff9800; padding: 8px 16px; font-size: 16px; border-radius: 4px;" title="Tìm kiếm">🔍</button>
             </div>
         </div>
         <div class="modal-body" style="flex: 1; padding: 0; overflow: auto; background: #fff;">
