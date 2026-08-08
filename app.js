@@ -893,9 +893,15 @@ async function processCCCDImage(input) {
                     statusText.innerText = "❌ Ảnh quá mờ hoặc định dạng AI trả về lỗi.";
                     statusText.style.color = "#d32f2f";
                 }
-            } else {
-                statusText.innerText = "❌ " + (data.error ? data.error.message : "Không tìm thấy dữ liệu CCCD.");
+} else {
+                // ĐÃ VÁ LỖI UNDEFINED: Xử lý linh hoạt cả lỗi dạng chuỗi và lỗi dạng Object
+                let errMsg = "Không tìm thấy dữ liệu CCCD.";
+                if (data.error) {
+                    errMsg = typeof data.error === 'string' ? data.error : (data.error.message || JSON.stringify(data.error));
+                }
+                statusText.innerText = "❌ " + errMsg;
                 statusText.style.color = "#d32f2f";
+                console.log("🕵️ BÁO CÁO LỖI CHI TIẾT:", data);
             }
         } catch (error) {
             console.error("Lỗi:", error);
