@@ -825,10 +825,10 @@ window.addEventListener('keydown', function(event) {
 
 
 // ==========================================
-// TÍNH NĂNG ĐỌC CCCD BẰNG GEMINI API (THỬ NGHIỆM)
+// TÍNH NĂNG ĐỌC CCCD BẰNG GEMINI API (BẢO MẬT QUA GAS)
 // ==========================================
-// LƯU Ý: Lấy API Key miễn phí tại: https://aistudio.google.com/app/apikey
-const GEMINI_API_KEY = "AQ.Ab8RN6IIJ22rMhoKlS1vLfE01FYyTvBneR8JWdYVhgbTPIwRvQ"; 
+// Dán link URL Web App (Trạm trung chuyển AI) ông vừa copy ở Bước 2 vào đây:
+const API_QUET_CCCD = "https://script.google.com/macros/s/AKfycbzWI0IHShoBfNSBZXw46lbNbhgKJRN-jP0ckQXdY3-yFBFTLu40id6_P9Ufn78Lx4xl/exec";
 
 async function processCCCDImage(input) {
     const file = input.files[0];
@@ -838,31 +838,22 @@ async function processCCCDImage(input) {
     statusText.innerText = "⏳ AI đang phân tích ảnh...";
     statusText.style.color = "#f57c00";
 
-    // Đọc file ảnh dưới dạng Base64
     const reader = new FileReader();
     reader.onloadend = async () => {
         const base64String = reader.result.split(',')[1];
         const mimeType = file.type;
 
-        // Xây dựng gói hàng gửi cho Gemini 1.5 Flash
+        // Đóng gói ảnh gửi lên Trạm trung chuyển (GAS)
         const payload = {
-            "contents": [{
-                "parts": [
-                    {
-                        // Prompt ép AI trích xuất định dạng JSON (Ngày sinh ép format YYYY-MM-DD để nhét vừa ô input date)
-                        "text": "Trích xuất thông tin từ thẻ Căn cước công dân Việt Nam này. Trả về DUY NHẤT một chuỗi JSON hợp lệ với 3 trường sau (Tuyệt đối không bọc bằng ký hiệu markdown ```json): {\"cccd\": \"số căn cước 12 số\", \"hoten\": \"HỌ VÀ TÊN IN HOA\", \"ngaysinh\": \"YYYY-MM-DD\"}"
-                    },
-                    {
-                        "inline_data": { "mime_type": mimeType, "data": base64String }
-                    }
-                ]
-            }]
+            imageBase64: base64String,
+            mimeType: mimeType
         };
 
         try {
-            const response = await fetch(`[https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=$](https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=$){GEMINI_API_KEY}`, {
+            // Gửi dữ liệu đi (Dùng text/plain để tránh lỗi CORS)
+            const response = await fetch(API_QUET_CCCD, {
                 method: "POST",
-                headers: { "Content-Type": "application/json" },
+                headers: { "Content-Type": "text/plain;charset=utf-8" },
                 body: JSON.stringify(payload)
             });
 
@@ -870,14 +861,11 @@ async function processCCCDImage(input) {
             
             if (data.candidates && data.candidates[0].content.parts[0].text) {
                 let textResult = data.candidates[0].content.parts[0].text;
-                
-                // Dọn dẹp rác markdown nếu AI lỡ trả về sai format
                 textResult = textResult.replace(/```json/g, '').replace(/```/g, '').trim();
                 
                 try {
                     const extracted = JSON.parse(textResult);
 
-                    // Đổ dữ liệu vào form
                     if(extracted.cccd) document.getElementById('cccd').value = extracted.cccd;
                     if(extracted.hoten) document.getElementById('hoten').value = extracted.hoten;
                     if(extracted.ngaysinh) document.getElementById('ngaysinh').value = extracted.ngaysinh;
@@ -885,7 +873,6 @@ async function processCCCDImage(input) {
                     statusText.innerText = "✅ Quét thành công!";
                     statusText.style.color = "#2e7d32";
                     
-                    // Gọi hàm kiểm tra của hệ thống cũ để nó ghi nhận thay đổi
                     autoCheckAdmission(); 
                 } catch (parseError) {
                     statusText.innerText = "❌ Ảnh mờ hoặc định dạng AI lỗi.";
@@ -896,15 +883,11 @@ async function processCCCDImage(input) {
                 statusText.style.color = "#d32f2f";
             }
         } catch (error) {
-            console.error("Lỗi API Gemini:", error);
-            statusText.innerText = "❌ Lỗi kết nối tới Google AI.";
+            console.error("Lỗi:", error);
+            statusText.innerText = "❌ Lỗi kết nối máy chủ trung gian.";
             statusText.style.color = "#d32f2f";
         }
-        
-        // Reset input để có thể chọn lại ảnh cũ nếu muốn thử lại
         input.value = "";
     };
-    
-    // Bắt đầu đọc file
     reader.readAsDataURL(file);
 }
