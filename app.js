@@ -859,11 +859,10 @@ async function processCCCDImage(input) {
         const dataUrl = canvas.toDataURL('image/jpeg', 0.8);
         const base64String = dataUrl.split(',')[1];
 
-        // Gửi gói hàng siêu nhẹ lên Trạm trung chuyển
-        const payload = {
+         const payload = {
             imageBase64: base64String,
-            mimeType: 'image/jpeg'
-            type: "cccd" // <-- Bổ sung dòng này
+            mimeType: 'image/jpeg', // <--- Phải có dấu phẩy ở đây!
+            type: "cccd" // <--- Dòng mới bổ sung
         };
 
         try {
