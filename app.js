@@ -863,6 +863,7 @@ async function processCCCDImage(input) {
         const payload = {
             imageBase64: base64String,
             mimeType: 'image/jpeg'
+            type: "cccd" // <-- Bổ sung dòng này
         };
 
         try {
@@ -909,5 +910,94 @@ async function processCCCDImage(input) {
             statusText.style.color = "#d32f2f";
         }
         input.value = ""; // Reset nút upload
+    };
+}
+
+
+// ==========================================
+// TÍNH NĂNG ĐỌC BẢNG ĐIỂM BẰNG AI
+// ==========================================
+async function processTranscriptImage(input) {
+    const file = input.files[0];
+    if (!file) return;
+
+    const statusText = document.getElementById('transcript-scan-status');
+    const resultBox = document.getElementById('transcript-result');
+    statusText.innerText = "⏳ Đang nén ảnh & đọc điểm...";
+    statusText.style.color = "#f57c00";
+    resultBox.style.display = "none";
+    resultBox.value = "";
+
+    const img = new Image();
+    img.src = URL.createObjectURL(file);
+    
+    img.onload = async () => {
+        const canvas = document.createElement('canvas');
+        const MAX_WIDTH = 1200; 
+        let width = img.width;
+        let height = img.height;
+
+        if (width > MAX_WIDTH) {
+            height = Math.round((height * MAX_WIDTH) / width);
+            width = MAX_WIDTH;
+        }
+
+        canvas.width = width;
+        canvas.height = height;
+        const ctx = canvas.getContext('2d');
+        ctx.drawImage(img, 0, 0, width, height);
+
+        const dataUrl = canvas.toDataURL('image/jpeg', 0.8);
+        const base64String = dataUrl.split(',')[1];
+
+        const payload = {
+            imageBase64: base64String,
+            mimeType: 'image/jpeg',
+            type: "bangdiem" // Khai báo đây là bảng điểm
+        };
+
+        try {
+            const response = await fetch(API_QUET_CCCD, {
+                method: "POST",
+                headers: { "Content-Type": "text/plain;charset=utf-8" },
+                body: JSON.stringify(payload)
+            });
+
+            const data = await response.json();
+            
+            if (data.candidates && data.candidates[0].content.parts[0].text) {
+                let textResult = data.candidates[0].content.parts[0].text;
+                textResult = textResult.replace(/```json/g, '').replace(/```/g, '').trim();
+                
+                try {
+                    const extractedArray = JSON.parse(textResult);
+                    
+                    // Lắp ráp mảng JSON thành văn bản dễ đọc
+                    let finalString = "Danh sách điểm AI đọc được:\n\n";
+                    extractedArray.forEach(item => {
+                        finalString += `- Môn ${item.monhoc}: ${item.diem}\n`;
+                    });
+
+                    resultBox.value = finalString;
+                    resultBox.style.display = "block"; // Hiện khung kết quả
+                    
+                    statusText.innerText = "✅ Đọc bảng điểm thành công!";
+                    statusText.style.color = "#2e7d32";
+                    
+                } catch (parseError) {
+                    statusText.innerText = "❌ Ảnh quá mờ hoặc định dạng AI trả về lỗi.";
+                    statusText.style.color = "#d32f2f";
+                }
+            } else {
+                let errMsg = data.error ? (typeof data.error === 'string' ? data.error : (data.error.message || JSON.stringify(data.error))) : "Không tìm thấy dữ liệu.";
+                statusText.innerText = "❌ " + errMsg;
+                statusText.style.color = "#d32f2f";
+            }
+        } catch (error) {
+            console.error("Lỗi:", error);
+            statusText.innerText = "❌ Lỗi kết nối tới trạm trung gian.";
+            statusText.style.color = "#d32f2f";
+        }
+        input.value = ""; 
     };
 }
