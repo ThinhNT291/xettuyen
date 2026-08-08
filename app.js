@@ -913,8 +913,9 @@ async function processCCCDImage(input) {
 }
 
 
+
 // ==========================================
-// TÍNH NĂNG ĐỌC BẢNG ĐIỂM BẰNG AI
+// TÍNH NĂNG ĐỌC BẢNG ĐIỂM (HỖ TRỢ ẢNH + PDF)
 // ==========================================
 async function processTranscriptImage(input) {
     const file = input.files[0];
@@ -922,37 +923,17 @@ async function processTranscriptImage(input) {
 
     const statusText = document.getElementById('transcript-scan-status');
     const resultBox = document.getElementById('transcript-result');
-    statusText.innerText = "⏳ Đang nén ảnh & đọc điểm...";
+    statusText.innerText = "⏳ Đang phân tích " + (file.type === 'application/pdf' ? "tài liệu PDF..." : "ảnh...");
     statusText.style.color = "#f57c00";
     resultBox.style.display = "none";
     resultBox.value = "";
 
-    const img = new Image();
-    img.src = URL.createObjectURL(file);
-    
-    img.onload = async () => {
-        const canvas = document.createElement('canvas');
-        const MAX_WIDTH = 1200; 
-        let width = img.width;
-        let height = img.height;
-
-        if (width > MAX_WIDTH) {
-            height = Math.round((height * MAX_WIDTH) / width);
-            width = MAX_WIDTH;
-        }
-
-        canvas.width = width;
-        canvas.height = height;
-        const ctx = canvas.getContext('2d');
-        ctx.drawImage(img, 0, 0, width, height);
-
-        const dataUrl = canvas.toDataURL('image/jpeg', 0.8);
-        const base64String = dataUrl.split(',')[1];
-
+    // Hàm gửi dữ liệu lên Trạm trung chuyển
+    const sendToBackend = async (base64String, mimeType) => {
         const payload = {
             imageBase64: base64String,
-            mimeType: 'image/jpeg',
-            type: "bangdiem" // Khai báo đây là bảng điểm
+            mimeType: mimeType,
+            type: "bangdiem"
         };
 
         try {
@@ -970,21 +951,18 @@ async function processTranscriptImage(input) {
                 
                 try {
                     const extractedArray = JSON.parse(textResult);
-                    
-                    // Lắp ráp mảng JSON thành văn bản dễ đọc
                     let finalString = "Danh sách điểm AI đọc được:\n\n";
                     extractedArray.forEach(item => {
                         finalString += `- Môn ${item.monhoc}: ${item.diem}\n`;
                     });
 
                     resultBox.value = finalString;
-                    resultBox.style.display = "block"; // Hiện khung kết quả
-                    
-                    statusText.innerText = "✅ Đọc bảng điểm thành công!";
+                    resultBox.style.display = "block";
+                    statusText.innerText = "✅ Đọc thành công!";
                     statusText.style.color = "#2e7d32";
                     
                 } catch (parseError) {
-                    statusText.innerText = "❌ Ảnh quá mờ hoặc định dạng AI trả về lỗi.";
+                    statusText.innerText = "❌ Không tìm thấy dữ liệu điểm rõ ràng.";
                     statusText.style.color = "#d32f2f";
                 }
             } else {
@@ -993,10 +971,45 @@ async function processTranscriptImage(input) {
                 statusText.style.color = "#d32f2f";
             }
         } catch (error) {
-            console.error("Lỗi:", error);
             statusText.innerText = "❌ Lỗi kết nối tới trạm trung gian.";
             statusText.style.color = "#d32f2f";
         }
-        input.value = ""; 
+        input.value = ""; // Reset file input
     };
+
+    // PHÂN LOẠI FILE: PDF hay Ảnh?
+    if (file.type === 'application/pdf') {
+        // Nếu là PDF -> Đọc nguyên bản Base64 gửi đi luôn (Không qua Canvas)
+        const reader = new FileReader();
+        reader.onloadend = () => {
+            const base64String = reader.result.split(',')[1];
+            sendToBackend(base64String, 'application/pdf');
+        };
+        reader.readAsDataURL(file);
+    } else {
+        // Nếu là Ảnh -> Cho qua "Máy ép Canvas" để giảm dung lượng
+        const img = new Image();
+        img.src = URL.createObjectURL(file);
+        img.onload = () => {
+            const canvas = document.createElement('canvas');
+            const MAX_WIDTH = 1200; 
+            let width = img.width;
+            let height = img.height;
+
+            if (width > MAX_WIDTH) {
+                height = Math.round((height * MAX_WIDTH) / width);
+                width = MAX_WIDTH;
+            }
+
+            canvas.width = width;
+            canvas.height = height;
+            const ctx = canvas.getContext('2d');
+            ctx.drawImage(img, 0, 0, width, height);
+
+            const dataUrl = canvas.toDataURL('image/jpeg', 0.8);
+            const base64String = dataUrl.split(',')[1];
+            
+            sendToBackend(base64String, 'image/jpeg');
+        };
+    }
 }
