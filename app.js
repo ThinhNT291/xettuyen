@@ -858,7 +858,7 @@ async function processCCCDImage(input) {
             });
 
             const data = await response.json();
-            
+         console.log("🕵️ BÁO CÁO MẬT TỪ GOOGLE:", JSON.stringify(data, null, 2));   
             if (data.candidates && data.candidates[0].content.parts[0].text) {
                 let textResult = data.candidates[0].content.parts[0].text;
                 textResult = textResult.replace(/```json/g, '').replace(/```/g, '').trim();
