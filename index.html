@@ -31,6 +31,14 @@
         <div class="form-group">
             <label for="cccd">Số CCCD <span class="req">(*)</span>:</label>
             <input type="text" id="cccd" placeholder="Nhập 12 số CCCD" required>
+
+            <!-- ĐOẠN CODE THÊM NÚT QUÉT AI Ở ĐÂY -->
+            <div style="margin-top: 8px; display: flex; align-items: center; gap: 10px;">
+                <input type="file" id="cccdFile" accept="image/*" style="display: none;" onchange="processCCCDImage(this)">
+                <button type="button" onclick="document.getElementById('cccdFile').click()" style="background: #2e7d32; color: white; border: none; padding: 5px 12px; border-radius: 4px; font-size: 13px; font-weight: bold; cursor: pointer; box-shadow: 0 1px 3px rgba(0,0,0,0.2);">📸 Quét CCCD bằng AI</button>
+                <span id="cccd-scan-status" style="font-size: 12px; color: #0288d1; font-style: italic;"></span>
+            </div>
+            <!-- KẾT THÚC ĐOẠN THÊM -->
         </div>
         
         <div class="form-group">
