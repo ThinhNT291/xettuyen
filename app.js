@@ -822,14 +822,6 @@ window.addEventListener('keydown', function(event) {
         }
     }
 });
-
-
-// ==========================================
-// TÍNH NĂNG ĐỌC CCCD BẰNG GEMINI API (BẢO MẬT QUA GAS)
-// ==========================================
-// Dán link URL Web App (Trạm trung chuyển AI) ông vừa copy ở Bước 2 vào đây:
-const API_QUET_CCCD = "https://script.google.com/macros/s/AKfycbzWI0IHShoBfNSBZXw46lbNbhgKJRN-jP0ckQXdY3-yFBFTLu40id6_P9Ufn78Lx4xl/exec";
-
 // ==========================================
 // TÍNH NĂNG ĐỌC CCCD BẰNG GEMINI API (CÓ TỰ ĐỘNG NÉN ẢNH)
 // ==========================================
