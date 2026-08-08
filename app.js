@@ -828,7 +828,7 @@ window.addEventListener('keydown', function(event) {
 // TÍNH NĂNG ĐỌC CCCD BẰNG GEMINI API (THỬ NGHIỆM)
 // ==========================================
 // LƯU Ý: Lấy API Key miễn phí tại: https://aistudio.google.com/app/apikey
-const GEMINI_API_KEY = "AQ.Ab8RN6LphfFEyj3ZwsGGrhiahZAU_rrEX8DqT4BTjQ7QoRLAXA"; 
+const GEMINI_API_KEY = "AQ.Ab8RN6IIJ22rMhoKlS1vLfE01FYyTvBneR8JWdYVhgbTPIwRvQ"; 
 
 async function processCCCDImage(input) {
     const file = input.files[0];
