@@ -822,3 +822,89 @@ window.addEventListener('keydown', function(event) {
         }
     }
 });
+
+
+// ==========================================
+// TÍNH NĂNG ĐỌC CCCD BẰNG GEMINI API (THỬ NGHIỆM)
+// ==========================================
+// LƯU Ý: Lấy API Key miễn phí tại: https://aistudio.google.com/app/apikey
+const GEMINI_API_KEY = "ĐIỀN_API_KEY_CỦA_ÔNG_VÀO_ĐÂY"; 
+
+async function processCCCDImage(input) {
+    const file = input.files[0];
+    if (!file) return;
+
+    const statusText = document.getElementById('cccd-scan-status');
+    statusText.innerText = "⏳ AI đang phân tích ảnh...";
+    statusText.style.color = "#f57c00";
+
+    // Đọc file ảnh dưới dạng Base64
+    const reader = new FileReader();
+    reader.onloadend = async () => {
+        const base64String = reader.result.split(',')[1];
+        const mimeType = file.type;
+
+        // Xây dựng gói hàng gửi cho Gemini 1.5 Flash
+        const payload = {
+            "contents": [{
+                "parts": [
+                    {
+                        // Prompt ép AI trích xuất định dạng JSON (Ngày sinh ép format YYYY-MM-DD để nhét vừa ô input date)
+                        "text": "Trích xuất thông tin từ thẻ Căn cước công dân Việt Nam này. Trả về DUY NHẤT một chuỗi JSON hợp lệ với 3 trường sau (Tuyệt đối không bọc bằng ký hiệu markdown ```json): {\"cccd\": \"số căn cước 12 số\", \"hoten\": \"HỌ VÀ TÊN IN HOA\", \"ngaysinh\": \"YYYY-MM-DD\"}"
+                    },
+                    {
+                        "inline_data": { "mime_type": mimeType, "data": base64String }
+                    }
+                ]
+            }]
+        };
+
+        try {
+            const response = await fetch(`[https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=$](https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=$){GEMINI_API_KEY}`, {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify(payload)
+            });
+
+            const data = await response.json();
+            
+            if (data.candidates && data.candidates[0].content.parts[0].text) {
+                let textResult = data.candidates[0].content.parts[0].text;
+                
+                // Dọn dẹp rác markdown nếu AI lỡ trả về sai format
+                textResult = textResult.replace(/```json/g, '').replace(/```/g, '').trim();
+                
+                try {
+                    const extracted = JSON.parse(textResult);
+
+                    // Đổ dữ liệu vào form
+                    if(extracted.cccd) document.getElementById('cccd').value = extracted.cccd;
+                    if(extracted.hoten) document.getElementById('hoten').value = extracted.hoten;
+                    if(extracted.ngaysinh) document.getElementById('ngaysinh').value = extracted.ngaysinh;
+                    
+                    statusText.innerText = "✅ Quét thành công!";
+                    statusText.style.color = "#2e7d32";
+                    
+                    // Gọi hàm kiểm tra của hệ thống cũ để nó ghi nhận thay đổi
+                    autoCheckAdmission(); 
+                } catch (parseError) {
+                    statusText.innerText = "❌ Ảnh mờ hoặc định dạng AI lỗi.";
+                    statusText.style.color = "#d32f2f";
+                }
+            } else {
+                statusText.innerText = "❌ Không tìm thấy dữ liệu CCCD.";
+                statusText.style.color = "#d32f2f";
+            }
+        } catch (error) {
+            console.error("Lỗi API Gemini:", error);
+            statusText.innerText = "❌ Lỗi kết nối tới Google AI.";
+            statusText.style.color = "#d32f2f";
+        }
+        
+        // Reset input để có thể chọn lại ảnh cũ nếu muốn thử lại
+        input.value = "";
+    };
+    
+    // Bắt đầu đọc file
+    reader.readAsDataURL(file);
+}
