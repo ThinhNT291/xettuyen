@@ -830,27 +830,50 @@ window.addEventListener('keydown', function(event) {
 // Dán link URL Web App (Trạm trung chuyển AI) ông vừa copy ở Bước 2 vào đây:
 const API_QUET_CCCD = "https://script.google.com/macros/s/AKfycbzWI0IHShoBfNSBZXw46lbNbhgKJRN-jP0ckQXdY3-yFBFTLu40id6_P9Ufn78Lx4xl/exec";
 
+// ==========================================
+// TÍNH NĂNG ĐỌC CCCD BẰNG GEMINI API (CÓ TỰ ĐỘNG NÉN ẢNH)
+// ==========================================
+const API_QUET_CCCD = "https://script.google.com/macros/s/AKfycbzWI0IHShoBfNSBZXw46lbNbhgKJRN-jP0ckQXdY3-yFBFTLu40id6_P9Ufn78Lx4xl/exec";
+
 async function processCCCDImage(input) {
     const file = input.files[0];
     if (!file) return;
 
     const statusText = document.getElementById('cccd-scan-status');
-    statusText.innerText = "⏳ AI đang phân tích ảnh...";
+    statusText.innerText = "⏳ Đang nén ảnh & gọi AI phân tích...";
     statusText.style.color = "#f57c00";
 
-    const reader = new FileReader();
-    reader.onloadend = async () => {
-        const base64String = reader.result.split(',')[1];
-        const mimeType = file.type;
+    // BỘ MÁY ÉP ẢNH TỰ ĐỘNG (Dùng Canvas)
+    const img = new Image();
+    img.src = URL.createObjectURL(file);
+    
+    img.onload = async () => {
+        const canvas = document.createElement('canvas');
+        const MAX_WIDTH = 1200; // Ép chiều ngang tối đa 1200px (Dư sức cho AI đọc)
+        let width = img.width;
+        let height = img.height;
 
-        // Đóng gói ảnh gửi lên Trạm trung chuyển (GAS)
+        if (width > MAX_WIDTH) {
+            height = Math.round((height * MAX_WIDTH) / width);
+            width = MAX_WIDTH;
+        }
+
+        canvas.width = width;
+        canvas.height = height;
+        const ctx = canvas.getContext('2d');
+        ctx.drawImage(img, 0, 0, width, height);
+
+        // Xuất ảnh ra Base64 với định dạng JPEG (Chất lượng 80%)
+        const dataUrl = canvas.toDataURL('image/jpeg', 0.8);
+        const base64String = dataUrl.split(',')[1];
+
+        // Gửi gói hàng siêu nhẹ lên Trạm trung chuyển
         const payload = {
             imageBase64: base64String,
-            mimeType: mimeType
+            mimeType: 'image/jpeg'
         };
 
         try {
-            // Gửi dữ liệu đi (Dùng text/plain để tránh lỗi CORS)
             const response = await fetch(API_QUET_CCCD, {
                 method: "POST",
                 headers: { "Content-Type": "text/plain;charset=utf-8" },
@@ -858,7 +881,7 @@ async function processCCCDImage(input) {
             });
 
             const data = await response.json();
-         console.log("🕵️ BÁO CÁO MẬT TỪ GOOGLE:", JSON.stringify(data, null, 2));   
+            
             if (data.candidates && data.candidates[0].content.parts[0].text) {
                 let textResult = data.candidates[0].content.parts[0].text;
                 textResult = textResult.replace(/```json/g, '').replace(/```/g, '').trim();
@@ -870,24 +893,23 @@ async function processCCCDImage(input) {
                     if(extracted.hoten) document.getElementById('hoten').value = extracted.hoten;
                     if(extracted.ngaysinh) document.getElementById('ngaysinh').value = extracted.ngaysinh;
                     
-                    statusText.innerText = "✅ Quét thành công!";
+                    statusText.innerText = "✅ AI quét xong chớp nhoáng!";
                     statusText.style.color = "#2e7d32";
                     
-                    autoCheckAdmission(); 
+                    if (typeof autoCheckAdmission === 'function') autoCheckAdmission(); 
                 } catch (parseError) {
-                    statusText.innerText = "❌ Ảnh mờ hoặc định dạng AI lỗi.";
+                    statusText.innerText = "❌ Ảnh quá mờ hoặc định dạng AI trả về lỗi.";
                     statusText.style.color = "#d32f2f";
                 }
             } else {
-                statusText.innerText = "❌ Không tìm thấy dữ liệu CCCD.";
+                statusText.innerText = "❌ " + (data.error ? data.error.message : "Không tìm thấy dữ liệu CCCD.");
                 statusText.style.color = "#d32f2f";
             }
         } catch (error) {
             console.error("Lỗi:", error);
-            statusText.innerText = "❌ Lỗi kết nối máy chủ trung gian.";
+            statusText.innerText = "❌ Lỗi kết nối tới trạm trung gian.";
             statusText.style.color = "#d32f2f";
         }
-        input.value = "";
+        input.value = ""; // Reset nút upload
     };
-    reader.readAsDataURL(file);
 }
