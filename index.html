@@ -218,13 +218,11 @@
 <div style="margin-bottom: 8px; display: flex; align-items: center; gap: 10px;">
                 <span id="transcript-scan-status" style="font-size: 12px; color: #0288d1; font-style: italic;"></span>
             </div>
-            
-            <!-- Khu vực hiển thị danh sách môn học -->
+<!-- Khu vực hiển thị danh sách môn học -->
             <textarea id="transcript-result" rows="5" style="width: 100%; margin-top: 10px; border-radius: 4px; border: 1px solid #ccc; padding: 8px; display: none;" placeholder="Kết quả AI đọc được sẽ hiện ở đây..."></textarea>
         </div>
     <div class="score-container">
-        
-        <div class="sep-notice">
+    <div class="sep-notice">
             <span>💡 <b>Lưu ý:</b> Sử dụng <b>DẤU [<span id="sys-sep-display" style="font-size:16px; color:#d32f2f;"></span>]</b> để phân cách thập phân. Vui lòng gõ đúng dấu khi nhập số lẻ (Ví dụ: <b id="sys-sep-example">8.5</b>)!</span>
         </div>
 
@@ -271,7 +269,7 @@
     <div id="traffic-light-box" style="margin-top: 20px; padding: 15px; border-radius: 6px; background-color: #f8f9fa; border: 1px solid #ddd; display: none; align-items: flex-start; gap: 15px;">
         <div id="tl-icon" style="font-size: 35px; line-height: 1;">🚥</div>
         <div style="flex: 1;">
-            <h4 id="tl-title" style="margin: 0 0 8px 0; font-size: 16px; text-transform: uppercase;">Đang phân tích dữ liệu...</h4>
+            <h4 id="tl-title" style="margin: 0 0 8px 0; font-size: 16px; text-transform: uppercase;">Analyzing...</h4>
             <div id="tl-hs-desc" style="margin: 0 0 5px 0; font-size: 14px; font-weight: 500;"></div>
             <div id="tl-diem-desc" style="margin: 0; font-size: 14px; color: #444;"></div>
         </div>
@@ -335,7 +333,7 @@
     </div>
     
     <div class="btn-group btn-bottom">
-        <button class="btn-clear" onclick="clearTable()">🗑️ Xóa làm lại</button>
+        <button class="btn-clear" onclick="clearTable()">🗑️ Xóa và nhập lại</button>
         <button class="btn-export" onclick="exportToExcel()">📥 Xuất file Excel</button>
         <button class="btn-push" id="btnPush" onclick="sendToCloud()">☁️ Đẩy dữ liệu lên hệ thống</button>
     </div>
@@ -364,7 +362,7 @@
         </div>
         <div class="modal-body" style="flex: 1; padding: 0; overflow: auto; background: #f9f9f9;">
             <div id="lookupContent" style="padding: 15px;">
-                <p style="text-align: center; color: #666; font-style: italic; margin-top: 30px;">Đang thiết lập hệ thống, vui lòng chờ...</p>
+                <p style="text-align: center; color: #666; font-style: italic; margin-top: 30px;">Đang tải dữ liệu, vui lòng chờ...</p>
             </div>
         </div>
     </div>
@@ -396,7 +394,6 @@
         </div>
     </div>
 </div>
-    
 <!-- GỌI SCRIPT -->
 <script src="data_config.js"></script>
 <script src="app.js"></script>
