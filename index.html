@@ -210,15 +210,19 @@
     </div>
 
     <div class="section-title">III. THÔNG TIN ĐIỂM SỐ</div>
-    <!-- NÚT QUÉT BẢNG ĐIỂM -->
+<!-- NÚT QUÉT BẢNG ĐIỂM -->
         <div class="form-group">
             <label>Lấy dữ liệu bảng điểm:</label>
-            <div style="margin-top: 8px; display: flex; align-items: center; gap: 10px;">
-            <input type="file" id="transcriptFile" accept="image/*, .pdf" style="display: none;" onchange="processTranscriptImage(this)">
+            <div style="margin-top: 8px; display: flex; align-items: center; flex-wrap: wrap; gap: 10px;">
+                <input type="file" id="transcriptFile" accept="image/*, .pdf" style="display: none;" onchange="processTranscriptImage(this)">
                 <button type="button" onclick="document.getElementById('transcriptFile').click()" style="background: #1976d2; color: white; border: none; padding: 5px 12px; border-radius: 4px; font-size: 13px; font-weight: bold; cursor: pointer; box-shadow: 0 1px 3px rgba(0,0,0,0.2);">📝 Scan Bảng Điểm</button>
-<div style="margin-bottom: 8px; display: flex; align-items: center; gap: 10px;">
+                
+                <!-- NÚT XEM LẠI KẾT QUẢ (Mặc định ẩn) -->
+                <button type="button" id="btnReopenTranscript" onclick="document.getElementById('largeTableModal').style.display='flex'" style="display: none; background: #9c27b0; color: white; border: none; padding: 5px 12px; border-radius: 4px; font-size: 13px; font-weight: bold; cursor: pointer; box-shadow: 0 1px 3px rgba(0,0,0,0.2);">👀 Xem lại Bảng điểm</button>
+                
                 <span id="transcript-scan-status" style="font-size: 12px; color: #0288d1; font-style: italic;"></span>
             </div>
+        </div>
 <!-- Khu vực hiển thị danh sách môn học -->
             <textarea id="transcript-result" rows="5" style="width: 100%; margin-top: 10px; border-radius: 4px; border: 1px solid #ccc; padding: 8px; display: none;" placeholder="Kết quả AI đọc được sẽ hiện ở đây..."></textarea>
         </div>
