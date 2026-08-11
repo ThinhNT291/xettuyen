@@ -3,6 +3,8 @@ let editingIndex = -1;
 let lookupData = [];
 let currentAction = "INSERT"; 
 let currentTranscriptJSON = []; // Lưu tạm bảng điểm vừa quét để mang đi đối sánh
+let currentCompareResultJSON = null; // Biến lưu kết quả đối sánh để xuất Excel
+let currentScanFileName = ""; // Lưu tên file đang quét
 
 const sysSep = (1.1).toLocaleString().substring(1, 2);
 const wrongSep = sysSep === '.' ? ',' : '.';
@@ -956,20 +958,17 @@ async function processCCCDImage(input) {
         input.value = ""; // Reset nút upload
     };
 }
-// ==========================================
-// ĐỌC BẢNG ĐIỂM & ĐỐI SÁNH CTĐT (AI) - BẢNG GỌN GÀNG
-// ==========================================
 async function processTranscriptImage(input) {
     const file = input.files[0];
     if (!file) return;
 
-    const fileName = file.name;
+    currentScanFileName = file.name;
     const statusText = document.getElementById('transcript-scan-status');
     const btnReopen = document.getElementById('btnReopenTranscript');
     
-    statusText.innerText = `⏳ Đang trích xuất dữ liệu: ${fileName}...`;
+    statusText.innerText = `⏳ Đang trích xuất dữ liệu: ${currentScanFileName}...`;
     statusText.style.color = "#f57c00";
-    btnReopen.style.display = "none"; // Ẩn nút xem lại khi đang quét mới
+    btnReopen.style.display = "none"; 
 
     const sendToBackend = async (base64String, mimeType) => {
         const payload = { imageBase64: base64String, mimeType: mimeType, type: "bangdiem" };
@@ -988,7 +987,6 @@ async function processTranscriptImage(input) {
                 try {
                     currentTranscriptJSON = JSON.parse(textResult); 
                     
-                    // VẼ BẢNG KẾT QUẢ ĐỌC ĐIỂM (CĂN GIỮA, GỌN GÀNG)
                     let tableHtml = `
                     <div style="display:flex; justify-content:center; width:100%; overflow-x: auto; padding: 10px 0;">
                         <table style="width: max-content !important; min-width: 80%; margin: 0 auto; border-collapse: collapse; background: #fff; box-shadow: 0 0 5px rgba(0,0,0,0.05); font-size: 13px; text-align: center;">
@@ -1017,18 +1015,12 @@ async function processTranscriptImage(input) {
                     });
                     tableHtml += `</tbody></table></div>`;
 
-                    document.getElementById('largeModalTitle').innerHTML = `<span>📑</span> Kết quả quét: ${fileName}`;
-                    document.getElementById('largeModalContent').innerHTML = tableHtml;
-                    
-                    document.getElementById('largeModalFooter').innerHTML = `
-                        <button class="btn-modal-cancel" style="background-color: #6c757d; color: white;" onclick="document.getElementById('largeTableModal').style.display='none'">Đóng lại</button>
-                        <button class="btn-modal-ok" style="background-color: #1976d2;" onclick="executeCompare()">⚖️ Phân tích & Đối sánh CTĐT</button>
-                    `;
-                    document.getElementById('largeTableModal').style.display = 'flex';
+                    currentTranscriptHTML = tableHtml; // Lưu mã HTML lại vào biến tạm để lát dùng cho nút Quay lại
+                    showTranscriptTable(); // Gọi hàm hiển thị
 
                     statusText.innerText = `✅ Đã đọc xong! Vui lòng xem bảng.`;
                     statusText.style.color = "#2e7d32";
-                    btnReopen.style.display = "inline-block"; // Hiện nút xem lại sau khi thành công
+                    btnReopen.style.display = "inline-block"; 
                     
                 } catch (e) {
                     statusText.innerText = "❌ Không tìm thấy dữ liệu điểm rõ ràng."; statusText.style.color = "#d32f2f";
@@ -1055,6 +1047,17 @@ async function processTranscriptImage(input) {
     }
 }
 
+// Hàm render lại bảng điểm gốc (dùng cho Nút Quay Lại)
+function showTranscriptTable() {
+    document.getElementById('largeModalTitle').innerHTML = `<span>📑</span> Kết quả quét: ${currentScanFileName}`;
+    document.getElementById('largeModalContent').innerHTML = currentTranscriptHTML;
+    document.getElementById('largeModalFooter').innerHTML = `
+        <button class="btn-modal-cancel" style="background-color: #6c757d; color: white;" onclick="document.getElementById('largeTableModal').style.display='none'">Đóng lại</button>
+        <button class="btn-modal-ok" style="background-color: #1976d2;" onclick="executeCompare()">⚖️ Phân tích & Đối sánh CTĐT</button>
+    `;
+    document.getElementById('largeTableModal').style.display = 'flex';
+}
+
 // ==========================================
 // THỰC THI ĐỐI SÁNH
 // ==========================================
@@ -1075,7 +1078,7 @@ async function executeCompare() {
 
         if (data.candidates && data.candidates[0].content.parts[0].text) {
             let resultText = data.candidates[0].content.parts[0].text.replace(/```json/g, '').replace(/```/g, '').trim();
-            const resultJson = JSON.parse(resultText);
+            currentCompareResultJSON = JSON.parse(resultText); // Lưu kết quả lại để xuất Excel
 
             let html = `
                 <div style="margin-bottom: 25px;">
@@ -1093,7 +1096,7 @@ async function executeCompare() {
                                 </tr>
                             </thead>
                             <tbody>`;
-            resultJson.matched.forEach(m => {
+            currentCompareResultJSON.matched.forEach(m => {
                 let color = m.ket_luan.includes("Đạt") ? "#2e7d32" : "#d84315";
                 html += `<tr onmouseover="this.style.background='#f9fbe7'" onmouseout="this.style.background='none'">
                     <td style="padding: 6px 15px; border: 1px solid #c8e6c9; text-align:left;">${m.nhom_mon}</td>
@@ -1119,7 +1122,7 @@ async function executeCompare() {
                                 </tr>
                             </thead>
                             <tbody>`;
-            resultJson.unmatched.forEach(u => {
+            currentCompareResultJSON.unmatched.forEach(u => {
                 html += `<tr onmouseover="this.style.background='#fff3e0'" onmouseout="this.style.background='none'">
                     <td style="padding: 6px 15px; border: 1px solid #ffcdd2; text-align:left;">${u.nhom_mon}</td>
                     <td style="padding: 6px 15px; border: 1px solid #ffcdd2; text-align:left; font-weight:bold;">${u.mon_chuan}</td>
@@ -1133,6 +1136,66 @@ async function executeCompare() {
     } catch (e) {
         contentDiv.innerHTML = `<p style="color:red; text-align:center;">❌ Lỗi kết nối tới hệ thống AI.</p>`;
     }
-    // Nhả lại nút Đóng    
-    document.getElementById('largeModalFooter').innerHTML = `<button class="btn-modal-cancel" style="background-color: #6c757d; color: white;" onclick="document.getElementById('largeTableModal').style.display='none'">Đóng lại</button>`;
+    
+    // NÚT CHỨC NĂNG MỚI TẠI FOOTER KHI CÓ KẾT QUẢ ĐỐI SÁNH
+    document.getElementById('largeModalFooter').innerHTML = `
+        <button class="btn-modal-cancel" style="background-color: #6c757d; color: white;" onclick="showTranscriptTable()">⬅️ Quay lại bảng điểm</button>
+        <button class="btn-modal-ok" style="background-color: #f57c00;" onclick="exportCompareResultToExcel(this)">📥 Xuất Excel & Lưu Cloud</button>
+        <button class="btn-modal-cancel" style="background-color: #d32f2f; color: white;" onclick="document.getElementById('largeTableModal').style.display='none'">Đóng lại</button>
+    `;
+}
+
+// ==========================================
+// XUẤT EXCEL & UPLOAD DRIVE
+// ==========================================
+async function exportCompareResultToExcel(btnElement) {
+    if (!currentCompareResultJSON) return;
+    
+    const origText = btnElement.innerHTML;
+    btnElement.innerHTML = "⏳ Đang tải và Lưu Drive...";
+    btnElement.disabled = true;
+    btnElement.style.opacity = "0.7";
+
+    const hoten = document.getElementById('hoten').value.trim() || "ChuaXacDinh";
+    const cccd = document.getElementById('cccd').value.trim() || "000000";
+    const now = new Date();
+    const dateStr = `${now.getFullYear()}${(now.getMonth()+1).toString().padStart(2,'0')}${now.getDate().toString().padStart(2,'0')}_${now.getHours().toString().padStart(2,'0')}${now.getMinutes().toString().padStart(2,'0')}`;
+    const fileName = `${hoten}_${cccd}_KQDS_${dateStr}`;
+
+    // 1. Dùng SheetJS tạo Workbook Excel
+    const wb = XLSX.utils.book_new();
+    
+    const wsMatched = XLSX.utils.json_to_sheet(currentCompareResultJSON.matched.map((m, i) => ({
+        "STT": i + 1, "Nhóm môn": m.nhom_mon, "Môn CTĐT chuẩn": m.mon_chuan, "TC chuẩn": m.tin_chi_chuan,
+        "Môn SV đã học": m.mon_da_hoc, "TC đã học": m.tin_chi_da_hoc, "Kết luận AI": m.ket_luan
+    })));
+    XLSX.utils.book_append_sheet(wb, wsMatched, "Mon_Tuong_Duong");
+
+    const wsUnmatched = XLSX.utils.json_to_sheet(currentCompareResultJSON.unmatched.map((u, i) => ({
+        "STT": i + 1, "Nhóm môn": u.nhom_mon, "Tên môn học chuẩn": u.mon_chuan, "TC yêu cầu": u.tin_chi_chuan
+    })));
+    XLSX.utils.book_append_sheet(wb, wsUnmatched, "Mon_Bo_Sung");
+
+    // 2. Tải về máy cục bộ
+    XLSX.writeFile(wb, fileName + ".xlsx");
+
+    // 3. Ép Workbook thành Base64 và Up qua GAS
+    const b64Data = XLSX.write(wb, { type: "base64", bookType: "xlsx" });
+    const payload = { type: "uploadExcel", fileName: fileName, fileBase64: b64Data };
+
+    try {
+        const response = await fetch(API_QUET_CCCD, { method: "POST", headers: { "Content-Type": "text/plain;charset=utf-8" }, body: JSON.stringify(payload) });
+        const resData = await response.json();
+        if(resData.status === "success") {
+            alert("✅ Đã tải file về máy thành công!");
+        } else {
+            alert("⚠️ File đã được tải về máy nhưng gặp lỗi khi lưu: " + resData.error);
+        }
+    } catch(e) {
+        alert("⚠️ File đã được tải về máy nhưng rớt mạng khi lưu!");
+    }
+    
+    btnElement.innerHTML = origText;
+    btnElement.disabled = false;
+    btnElement.style.opacity = "1";
 }
