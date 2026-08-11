@@ -648,12 +648,57 @@ async function executeSearchCandidate() {
         contentDiv.innerHTML = '<p style="text-align: center; color: #d32f2f; font-weight: bold; margin-top: 30px;">❌ Lỗi kết nối mạng, vui lòng thử lại.</p>';
     }
 }
+// ========================================================
+// ĐÃ SỬA: Hàm gọi Modal xác nhận TRƯỚC KHI load dữ liệu
+// ========================================================
 function loadOldCandidate(index) {
-    closeSearchModal();
-    currentAction = "UPDATE";
-    fillFormWithData(currentSearchResults[index].fullData);
+    const rowData = currentSearchResults[index].fullData;
+    
+    // Trích xuất trước trạng thái để hiển thị nội dung cảnh báo phù hợp
+    const normData = {};
+    for (let key in rowData) {
+        let cleanKey = key.trim().toUpperCase().replace(/\s+/g, ' ');
+        normData[cleanKey] = rowData[key];
+    }
+    const statusString = normData["TRẠNG THÁI THẨM ĐỊNH"] || normData["TRẠNG THÁI"] || "";
+    const isApproved = statusString && String(statusString).toUpperCase().includes("ĐÃ DUYỆT");
+
+    let title = isApproved ? "🔒 Hồ sơ đã duyệt trúng tuyển" : "💡 Đã tải lại hồ sơ";
+    let message = isApproved 
+        ? "Hồ sơ này đã ĐƯỢC DUYỆT TRÚNG TUYỂN.\n\n👉 Bạn chỉ có thể TÍCH BỔ SUNG hồ sơ đính kèm, KHÔNG ĐƯỢC PHÉP sửa thông tin cá nhân hay điểm số!" 
+        : "Hồ sơ đã trả về.\n\n👉 Bạn có thể bổ sung thông tin, NGOẠI TRỪ NGÀNH XÉT TUYỂN.";
+
+    // Gọi Modal tùy chỉnh
+    const modal = document.getElementById('customModal');
+    document.getElementById('modalHeader').className = isApproved ? 'modal-header warn' : 'modal-header info';
+    document.getElementById('modalHeader').innerHTML = isApproved ? `<span>🔒</span> ${title}` : `<span>💡</span> ${title}`;
+    document.getElementById('modalBody').innerText = message;
+    
+    // Thêm nút Quay lại và Đồng ý
+    document.getElementById('modalFooter').innerHTML = `
+        <button class="btn-modal-cancel" id="btnModalBack" style="background-color: #6c757d; color: white;">Quay lại</button>
+        <button class="btn-modal-ok" id="btnModalAgree" style="background-color: #4a7536;">Đồng ý</button>
+    `;
+    
+    modal.style.display = 'flex';
+
+    // Xử lý sự kiện nút bấm Quay lại
+    document.getElementById('btnModalBack').onclick = () => {
+        modal.style.display = 'none'; // Chỉ đóng popup xác nhận, giữ nguyên bảng tìm kiếm
+    };
+
+    // Xử lý sự kiện nút bấm Đồng ý
+    document.getElementById('btnModalAgree').onclick = () => {
+        modal.style.display = 'none'; // Đóng popup xác nhận
+        closeSearchModal();           // Đóng khung tìm kiếm
+        currentAction = "UPDATE";
+        fillFormWithData(rowData);    // LÚC NÀY MỚI THỰC SỰ LOAD DỮ LIỆU LÊN TRANG
+    };
 }
 
+// ========================================================
+// ĐÃ SỬA: Hàm khóa ô dữ liệu (Xóa bỏ showAlert trùng lặp)
+// ========================================================
 function lockSectionsIfApproved(statusString) {
     const isApproved = statusString && String(statusString).toUpperCase().includes("ĐÃ DUYỆT");
     const fieldsToLockAll = ['hoten', 'ngaysinh', 'nganh', 'khoa', 'doituonguutien', 'khuvucuutien', 'doituongdauvao', 'namtt', 'hedaotao', 'htdaotao'];
@@ -676,7 +721,7 @@ function lockSectionsIfApproved(statusString) {
         document.querySelectorAll('.score-val').forEach(el => {
             el.disabled = true; el.style.background = "#e9ecef"; el.style.opacity = "0.7"; el.style.cursor = "not-allowed";
         });
-        showAlert("Hồ sơ này đã ĐƯỢC DUYỆT TRÚNG TUYỂN.\n\n👉 Bạn chỉ có thể TÍCH BỔ SUNG hồ sơ đính kèm, KHÔNG ĐƯỢC PHÉP sửa thông tin cá nhân hay điểm số!", "🔒 Hồ sơ đã duyệt trúng tuyển", false);
+        // (Đã xóa showAlert ở đây vì popup đã hiện từ bước bấm nút Sửa)
     } else {
         // LUẬT 2: NẾU CHỜ DUYỆT -> CHỈ KHÓA Ô NGÀNH
         let nganhEl = document.getElementById('nganh');
@@ -686,10 +731,9 @@ function lockSectionsIfApproved(statusString) {
             nganhEl.style.opacity = "0.7"; 
             nganhEl.style.cursor = "not-allowed";
         }
-        showAlert("Hồ sơ đã trả về.\n\n👉 Bạn có thể bổ sung thông tin, NGOẠI TRỪ NGÀNH XÉT TUYỂN.", "Đã tải lại hồ sơ", false);
+        // (Đã xóa showAlert ở đây vì popup đã hiện từ bước bấm nút Sửa)
     }
 }
-
 function fillFormWithData(rowData) {
     const normData = {};
     for (let key in rowData) {
@@ -832,7 +876,7 @@ async function processCCCDImage(input) {
     if (!file) return;
 
     const statusText = document.getElementById('cccd-scan-status');
-    statusText.innerText = "⏳ Đang nén ảnh & gọi AI phân tích...";
+    statusText.innerText = "⏳ Đang nén ảnh & và phân tích...";
     statusText.style.color = "#f57c00";
 
     // BỘ MÁY ÉP ẢNH TỰ ĐỘNG (Dùng Canvas)
@@ -885,12 +929,12 @@ async function processCCCDImage(input) {
                     if(extracted.hoten) document.getElementById('hoten').value = extracted.hoten;
                     if(extracted.ngaysinh) document.getElementById('ngaysinh').value = extracted.ngaysinh;
                     
-                    statusText.innerText = "✅ AI quét xong chớp nhoáng!";
+                    statusText.innerText = "✅ Điền thành công !";
                     statusText.style.color = "#2e7d32";
                     
                     if (typeof autoCheckAdmission === 'function') autoCheckAdmission(); 
                 } catch (parseError) {
-                    statusText.innerText = "❌ Ảnh quá mờ hoặc định dạng AI trả về lỗi.";
+                    statusText.innerText = "❌ Ảnh quá mờ hoặc không phù hợp.";
                     statusText.style.color = "#d32f2f";
                 }
 } else {
@@ -905,15 +949,12 @@ async function processCCCDImage(input) {
             }
         } catch (error) {
             console.error("Lỗi:", error);
-            statusText.innerText = "❌ Lỗi kết nối tới trạm trung gian.";
+            statusText.innerText = "❌ Lỗi kết nối.";
             statusText.style.color = "#d32f2f";
         }
         input.value = ""; // Reset nút upload
     };
 }
-
-
-
 // ==========================================
 // TÍNH NĂNG ĐỌC BẢNG ĐIỂM (HỖ TRỢ ẢNH + PDF)
 // ==========================================
@@ -971,7 +1012,7 @@ async function processTranscriptImage(input) {
                 statusText.style.color = "#d32f2f";
             }
         } catch (error) {
-            statusText.innerText = "❌ Lỗi kết nối tới trạm trung gian.";
+            statusText.innerText = "❌ Lỗi kết nối.";
             statusText.style.color = "#d32f2f";
         }
         input.value = ""; // Reset file input
