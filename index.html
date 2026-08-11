@@ -26,19 +26,16 @@
             </div>
             <input type="text" id="hoten" placeholder="Nguyễn Văn A" required>
         </div>
-        
+            <!-- ĐOẠN CODE THÊM NÚT QUÉT AI Ở ĐÂY -->
+            <div style="margin-top: 8px; display: flex; align-items: center; gap: 10px;">
+                <input type="file" id="cccdFile" accept="image/*" style="display: none;" onchange="processCCCDImage(this)">
+                <button type="button" onclick="document.getElementById('cccdFile').click()" style="background: #2e7d32; color: white; border: none; padding: 5px 12px; border-radius: 4px; font-size: 13px; font-weight: bold; cursor: pointer; box-shadow: 0 1px 3px rgba(0,0,0,0.2);">📸 Scan CCCD</button>
+                <span id="cccd-scan-status" style="font-size: 12px; color: #0288d1; font-style: italic;"></span>
+            </div>        
         <!-- ĐẢO CCCD XUỐNG DƯỚI -->
         <div class="form-group">
             <label for="cccd">Số CCCD <span class="req">(*)</span>:</label>
             <input type="text" id="cccd" placeholder="Nhập 12 số CCCD" required>
-
-            <!-- ĐOẠN CODE THÊM NÚT QUÉT AI Ở ĐÂY -->
-            <div style="margin-top: 8px; display: flex; align-items: center; gap: 10px;">
-                <input type="file" id="cccdFile" accept="image/*" style="display: none;" onchange="processCCCDImage(this)">
-                <button type="button" onclick="document.getElementById('cccdFile').click()" style="background: #2e7d32; color: white; border: none; padding: 5px 12px; border-radius: 4px; font-size: 13px; font-weight: bold; cursor: pointer; box-shadow: 0 1px 3px rgba(0,0,0,0.2);">📸 Quét CCCD bằng AI</button>
-                <span id="cccd-scan-status" style="font-size: 12px; color: #0288d1; font-style: italic;"></span>
-            </div>
-            <!-- KẾT THÚC ĐOẠN THÊM -->
         </div>
         
         <div class="form-group">
@@ -96,7 +93,7 @@
         <div class="form-group">
             <label for="doituongdauvao">Đối tượng đầu vào <span class="req">(*)</span>:</label>
             <select id="doituongdauvao" required onchange="handleDoiTuongChange()">
-                <option value="" disabled selected>-- Chọn để hiển thị hồ sơ & điểm tương ứng --</option>
+                <option value="" disabled selected>- Căn cứ loại hồ sơ dùng để xét tuyển -</option>
                 <option value="Tốt nghiệp THPT">Tốt nghiệp THPT</option>
                 <option value="Tốt nghiệp Trung cấp sau 2022">Tốt nghiệp Trung cấp sau 2022</option>
                 <option value="Tốt nghiệp Trung cấp trước 2022">Tốt nghiệp Trung cấp trước 2022</option>
@@ -114,7 +111,7 @@
             </select>
         </div>
         <div class="form-group">
-            <label for="hedaotao">Hệ đào tạo <span class="req">(*)</span>:</label>
+            <label for="hedaotao">Xét tuyển vào hệ đào tạo <span class="req">(*)</span>:</label>
             <select id="hedaotao" required>
                 <option value="" disabled selected>-- Chọn hệ đào tạo --</option>
                 <option value="Cao đẳng">Cao đẳng</option>
@@ -128,7 +125,7 @@
             </select>
         </div>
         <div class="form-group">
-            <label for="htdaotao">Hình thức đào tạo <span class="req">(*)</span>:</label>
+            <label for="htdaotao">Xét vào Hình thức đào tạo <span class="req">(*)</span>:</label>
             <select id="htdaotao" required>
                 <option value="" disabled selected>-- Chọn hình thức học --</option>
                 <option value="Thường xuyên: Phương thức ĐTTX">Thường xuyên: Phương thức ĐTTX</option>
@@ -139,7 +136,7 @@
         </div>
 
         <div class="form-group full-width" style="margin-top: 10px; border-top: 1px dashed #cccccc; padding-top: 15px;">
-            <label for="link_folder" style="color: #0288d1;">🔗 Link Folder chứa hồ sơ (Không bắt buộc):</label>
+            <label for="link_folder" style="color: #0288d1;">🔗 Link Folder chứa hồ sơ:</label>
             <input type="text" id="link_folder" placeholder="Dán link thư mục chứa hồ sơ của thí sinh (Ví dụ: https://drive.google.com/drive/folders/...)" style="border-color: #0288d1;">
         </div>
     </div>
@@ -161,7 +158,7 @@
     </div>
 
     <div class="doc-container">
-        <div id="doc-placeholder" class="doc-placeholder">👈 Chọn "Đối tượng đầu vào" ở mục I</div>
+        <div id="doc-placeholder" class="doc-placeholder">👈 Chọn "Đối tượng đầu vào" trước</div>
 
         <div id="group-thpt" class="doc-group">
             <h4>📁 Hồ sơ áp dụng cho: Tốt nghiệp THPT</h4>
@@ -206,7 +203,7 @@
         </div>
 
         <div class="form-group" style="margin-top: 15px; border-top: 1px solid #b2ebf2; padding-top: 15px;">
-            <label for="giay_uutien">GIẤY TỜ ƯU TIÊN (Không bắt buộc):</label>
+            <label for="giay_uutien">GIẤY TỜ ƯU TIÊN (Ghi rõ loại hồ sơ):</label>
             <input type="text" id="giay_uutien" placeholder="Giấy ưu tiên, nếu có">
         </div>
     </div>
@@ -214,10 +211,11 @@
     <div class="section-title">III. THÔNG TIN ĐIỂM SỐ</div>
     <!-- NÚT QUÉT BẢNG ĐIỂM -->
         <div class="form-group">
-            <label>Phân tích Bảng điểm (AI):</label>
+            <label>Lấy dữ liệu bảng điểm:</label>
             <div style="margin-top: 8px; display: flex; align-items: center; gap: 10px;">
             <input type="file" id="transcriptFile" accept="image/*, .pdf" style="display: none;" onchange="processTranscriptImage(this)">
-                <button type="button" onclick="document.getElementById('transcriptFile').click()" style="background: #1976d2; color: white; border: none; padding: 5px 12px; border-radius: 4px; font-size: 13px; font-weight: bold; cursor: pointer; box-shadow: 0 1px 3px rgba(0,0,0,0.2);">📝 Quét Bảng Điểm</button>
+                <button type="button" onclick="document.getElementById('transcriptFile').click()" style="background: #1976d2; color: white; border: none; padding: 5px 12px; border-radius: 4px; font-size: 13px; font-weight: bold; cursor: pointer; box-shadow: 0 1px 3px rgba(0,0,0,0.2);">📝 Scan Bảng Điểm</button>
+<div style="margin-bottom: 8px; display: flex; align-items: center; gap: 10px;">
                 <span id="transcript-scan-status" style="font-size: 12px; color: #0288d1; font-style: italic;"></span>
             </div>
             
