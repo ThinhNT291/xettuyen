@@ -2,6 +2,7 @@ let dataList = [];
 let editingIndex = -1; 
 let lookupData = [];
 let currentAction = "INSERT"; 
+let currentTranscriptJSON = []; // Lưu tạm bảng điểm vừa quét để mang đi đối sánh
 
 const sysSep = (1.1).toLocaleString().substring(1, 2);
 const wrongSep = sysSep === '.' ? ',' : '.';
@@ -956,17 +957,15 @@ async function processCCCDImage(input) {
     };
 }
 // ==========================================
-// TÍNH NĂNG ĐỌC BẢNG ĐIỂM (HIỂN THỊ MODAL BẢNG + TÊN FILE)
+// ĐỌC BẢNG ĐIỂM & ĐỐI SÁNH CTĐT (AI)
 // ==========================================
 async function processTranscriptImage(input) {
     const file = input.files[0];
     if (!file) return;
 
-    const fileName = file.name; // Lấy tên file
+    const fileName = file.name;
     const statusText = document.getElementById('transcript-scan-status');
-    // Không dùng textarea nữa nên ta có thể bỏ phần xử lý resultBox
-    
-    statusText.innerText = `⏳ Đang phân tích file: ${fileName}...`;
+    statusText.innerText = `⏳ Đang trích xuất dữ liệu: ${fileName}...`;
     statusText.style.color = "#f57c00";
 
     const sendToBackend = async (base64String, mimeType) => {
@@ -984,75 +983,151 @@ async function processTranscriptImage(input) {
                 textResult = textResult.replace(/```json/g, '').replace(/```/g, '').trim();
                 
                 try {
-                    const extractedArray = JSON.parse(textResult);
+                    currentTranscriptJSON = JSON.parse(textResult); // Lưu tạm để đối sánh
                     
-                    // VẼ BẢNG HTML KẾT QUẢ
+                    // VẼ BẢNG KẾT QUẢ ĐỌC ĐIỂM
                     let tableHtml = `
-                    <div style="max-height: 400px; overflow-y: auto;">
-                        <table style="width: 100%; border-collapse: collapse; font-size: 13px; text-align: center;">
-                            <thead style="background: #004d40; color: white; position: sticky; top: 0;">
-                                <tr>
-                                    <th style="padding: 8px; border: 1px solid #ddd;">STT</th>
-                                    <th style="padding: 8px; border: 1px solid #ddd; text-align: left;">Tên môn học</th>
-                                    <th style="padding: 8px; border: 1px solid #ddd;">Số TC</th>
-                                    <th style="padding: 8px; border: 1px solid #ddd;">Điểm</th>
-                                </tr>
-                            </thead>
-                            <tbody>`;
+                    <table style="width: 100%; border-collapse: collapse; font-size: 13px; text-align: center;">
+                        <thead style="background: #004d40; color: white; position: sticky; top: 0;">
+                            <tr>
+                                <th style="padding: 10px; border: 1px solid #ddd; width: 40px;">STT</th>
+                                <th style="padding: 10px; border: 1px solid #ddd; text-align: left;">Tên môn học</th>
+                                <th style="padding: 10px; border: 1px solid #ddd; width: 60px;">TC</th>
+                                <th style="padding: 10px; border: 1px solid #ddd; width: 80px;">Đ.Chữ</th>
+                                <th style="padding: 10px; border: 1px solid #ddd; width: 80px;">Hệ 4</th>
+                                <th style="padding: 10px; border: 1px solid #ddd; width: 80px;">Hệ 10</th>
+                            </tr>
+                        </thead>
+                        <tbody>`;
                     
-                    extractedArray.forEach((item, idx) => {
+                    currentTranscriptJSON.forEach((item, idx) => {
                         tableHtml += `
-                                <tr onmouseover="this.style.background='#f1f8e9'" onmouseout="this.style.background='none'">
-                                    <td style="padding: 6px; border: 1px solid #ddd;">${idx + 1}</td>
-                                    <td style="padding: 6px; border: 1px solid #ddd; text-align: left;"><b>${item.monhoc}</b></td>
-                                    <td style="padding: 6px; border: 1px solid #ddd; color: #d84315; font-weight: bold;">${item.tinchi}</td>
-                                    <td style="padding: 6px; border: 1px solid #ddd; color: #2e7d32; font-weight: bold;">${item.diem}</td>
-                                </tr>`;
+                            <tr onmouseover="this.style.background='#f1f8e9'" onmouseout="this.style.background='none'">
+                                <td style="padding: 8px; border: 1px solid #ddd;">${idx + 1}</td>
+                                <td style="padding: 8px; border: 1px solid #ddd; text-align: left;"><b>${item.monhoc || ''}</b></td>
+                                <td style="padding: 8px; border: 1px solid #ddd; color: #d84315; font-weight: bold;">${item.tinchi || ''}</td>
+                                <td style="padding: 8px; border: 1px solid #ddd;">${item.diem_chu || ''}</td>
+                                <td style="padding: 8px; border: 1px solid #ddd;">${item.diem_he4 || ''}</td>
+                                <td style="padding: 8px; border: 1px solid #ddd; color: #2e7d32; font-weight: bold;">${item.diem_he10 || ''}</td>
+                            </tr>`;
                     });
+                    tableHtml += `</tbody></table>`;
+
+                    // Đổ dữ liệu vào Modal Khổng Lồ
+                    document.getElementById('largeModalTitle').innerHTML = `<span>📑</span> Kết quả quét: ${fileName}`;
+                    document.getElementById('largeModalContent').innerHTML = tableHtml;
                     
-                    tableHtml += `</tbody></table></div>`;
+                    // Thêm nút Bắt đầu đối sánh vào Footer
+                    document.getElementById('largeModalFooter').innerHTML = `
+                        <button class="btn-modal-cancel" style="background-color: #6c757d; color: white;" onclick="document.getElementById('largeTableModal').style.display='none'">Đóng lại</button>
+                        <button class="btn-modal-ok" style="background-color: #1976d2;" onclick="executeCompare()">⚖️ Phân tích & Đối sánh CTĐT</button>
+                    `;
+                    document.getElementById('largeTableModal').style.display = 'flex';
 
-                    // Hiển thị ra Modal chung của hệ thống
-                    const modal = document.getElementById('customModal');
-                    document.getElementById('modalHeader').className = 'modal-header info';
-                    document.getElementById('modalHeader').innerHTML = `<span>📑</span> Kết quả Scan: ${fileName}`;
-                    document.getElementById('modalBody').innerHTML = tableHtml;
-                    document.getElementById('modalFooter').innerHTML = `<button class="btn-modal-ok" onclick="document.getElementById('customModal').style.display='none'">Đóng lại</button>`;
-                    modal.style.display = 'flex';
-
-                    statusText.innerText = `✅ Scan thành công file: ${fileName}`;
+                    statusText.innerText = `✅ Đã đọc xong! Vui lòng xem bảng.`;
                     statusText.style.color = "#2e7d32";
                     
-                } catch (parseError) {
-                    statusText.innerText = "❌ Không tìm thấy dữ liệu điểm rõ ràng.";
-                    statusText.style.color = "#d32f2f";
+                } catch (e) {
+                    statusText.innerText = "❌ Không tìm thấy dữ liệu điểm rõ ràng."; statusText.style.color = "#d32f2f";
                 }
             } else {
-                statusText.innerText = "❌ Lỗi: Không thể trích xuất dữ liệu.";
-                statusText.style.color = "#d32f2f";
+                statusText.innerText = "❌ Lỗi trích xuất dữ liệu."; statusText.style.color = "#d32f2f";
             }
-        } catch (error) {
-            statusText.innerText = "❌ Lỗi kết nối.";
-            statusText.style.color = "#d32f2f";
-        }
+        } catch (error) { statusText.innerText = "❌ Lỗi máy chủ."; statusText.style.color = "#d32f2f"; }
         input.value = ""; 
     };
 
     if (file.type === 'application/pdf') {
-        const reader = new FileReader();
-        reader.onloadend = () => { sendToBackend(reader.result.split(',')[1], 'application/pdf'); };
-        reader.readAsDataURL(file);
+        const reader = new FileReader(); reader.onloadend = () => { sendToBackend(reader.result.split(',')[1], 'application/pdf'); }; reader.readAsDataURL(file);
     } else {
-        const img = new Image();
-        img.src = URL.createObjectURL(file);
+        const img = new Image(); img.src = URL.createObjectURL(file);
         img.onload = () => {
-            const canvas = document.createElement('canvas');
-            const MAX_WIDTH = 1200; 
-            let width = img.width; let height = img.height;
-            if (width > MAX_WIDTH) { height = Math.round((height * MAX_WIDTH) / width); width = MAX_WIDTH; }
-            canvas.width = width; canvas.height = height;
-            const ctx = canvas.getContext('2d'); ctx.drawImage(img, 0, 0, width, height);
+            const canvas = document.createElement('canvas'); const MAX_WIDTH = 1200; 
+            let w = img.width; let h = img.height;
+            if (w > MAX_WIDTH) { h = Math.round((h * MAX_WIDTH) / w); w = MAX_WIDTH; }
+            canvas.width = w; canvas.height = h;
+            canvas.getContext('2d').drawImage(img, 0, 0, w, h);
             sendToBackend(canvas.toDataURL('image/jpeg', 0.8).split(',')[1], 'image/jpeg');
         };
     }
+}
+
+// Hàm gửi dữ liệu đi đối sánh
+async function executeCompare() {
+    const nganhChon = document.getElementById('nganh').value;
+    if (!nganhChon) { alert("⚠️ Vui lòng CHỌN NGÀNH ĐÀO TẠO trên form trước khi bấm đối sánh!"); return; }
+
+    const contentDiv = document.getElementById('largeModalContent');
+    contentDiv.innerHTML = `<h3 style="text-align:center; color:#f57c00;">⏳ Processing [${nganhChon.toUpperCase()}]...</h3><p style="text-align:center; font-style:italic;">Đang xử lý. Vui lòng không đóng hoặc refresh trang web.</p>`;
+    
+    // Khóa nút tránh bấm nhiều lần
+    document.getElementById('largeModalFooter').innerHTML = `<button class="btn-modal-cancel" style="background-color: #6c757d; color: white; opacity:0.5;" disabled>Đang xử lý...</button>`;
+
+    const payload = { type: "doisanh", nganh: nganhChon, transcript: currentTranscriptJSON };
+
+    try {
+        const response = await fetch(API_QUET_CCCD, { method: "POST", headers: { "Content-Type": "text/plain;charset=utf-8" }, body: JSON.stringify(payload) });
+        const data = await response.json();
+
+        if (data.candidates && data.candidates[0].content.parts[0].text) {
+            let resultText = data.candidates[0].content.parts[0].text.replace(/```json/g, '').replace(/```/g, '').trim();
+            const resultJson = JSON.parse(resultText);
+
+            let html = `
+                <div style="margin-bottom: 20px;">
+                    <h3 style="color: #2e7d32; border-bottom: 2px solid #2e7d32; padding-bottom: 5px;">✅ CÁC MÔN CÓ THỂ XÉT TƯƠNG ĐƯƠNG</h3>
+                    <table style="width: 100%; border-collapse: collapse; font-size: 13px; text-align: center;">
+                        <thead style="background: #e8f5e9; color: #1b5e20;">
+                            <tr>
+                                <th style="padding: 8px; border: 1px solid #c8e6c9;">Nhóm môn</th>
+                                <th style="padding: 8px; border: 1px solid #c8e6c9;">Môn CTĐT chuẩn</th>
+                                <th style="padding: 8px; border: 1px solid #c8e6c9;">TC chuẩn</th>
+                                <th style="padding: 8px; border: 1px solid #c8e6c9;">Môn SV đã học</th>
+                                <th style="padding: 8px; border: 1px solid #c8e6c9;">TC đã học</th>
+                                <th style="padding: 8px; border: 1px solid #c8e6c9;">Kết luận AI</th>
+                            </tr>
+                        </thead>
+                        <tbody>`;
+            resultJson.matched.forEach(m => {
+                let color = m.ket_luan.includes("Đạt") ? "#2e7d32" : "#d84315";
+                html += `<tr>
+                    <td style="padding: 6px; border: 1px solid #c8e6c9; text-align:left;">${m.nhom_mon}</td>
+                    <td style="padding: 6px; border: 1px solid #c8e6c9; text-align:left;"><b>${m.mon_chuan}</b></td>
+                    <td style="padding: 6px; border: 1px solid #c8e6c9;">${m.tin_chi_chuan}</td>
+                    <td style="padding: 6px; border: 1px solid #c8e6c9; text-align:left; color:#1565c0;">${m.mon_da_hoc}</td>
+                    <td style="padding: 6px; border: 1px solid #c8e6c9;">${m.tin_chi_da_hoc}</td>
+                    <td style="padding: 6px; border: 1px solid #c8e6c9; font-weight:bold; color:${color};">${m.ket_luan}</td>
+                </tr>`;
+            });
+            html += `</tbody></table></div>`;
+
+            html += `
+                <div>
+                    <h3 style="color: #d32f2f; border-bottom: 2px solid #d32f2f; padding-bottom: 5px;">⚠️ CÁC MÔN SINH VIÊN CHƯA HỌC (CHƯA ĐỐI SÁNH ĐƯỢC)</h3>
+                    <table style="width: 100%; border-collapse: collapse; font-size: 13px; text-align: center;">
+                        <thead style="background: #ffebee; color: #b71c1c;">
+                            <tr>
+                                <th style="padding: 8px; border: 1px solid #ffcdd2;">Nhóm môn</th>
+                                <th style="padding: 8px; border: 1px solid #ffcdd2; text-align:left;">Tên môn học chuẩn</th>
+                                <th style="padding: 8px; border: 1px solid #ffcdd2; width: 100px;">TC yêu cầu</th>
+                            </tr>
+                        </thead>
+                        <tbody>`;
+            resultJson.unmatched.forEach(u => {
+                html += `<tr>
+                    <td style="padding: 6px; border: 1px solid #ffcdd2; text-align:left;">${u.nhom_mon}</td>
+                    <td style="padding: 6px; border: 1px solid #ffcdd2; text-align:left; font-weight:bold;">${u.mon_chuan}</td>
+                    <td style="padding: 6px; border: 1px solid #ffcdd2; font-weight:bold; color:#d32f2f;">${u.tin_chi_chuan}</td>
+                </tr>`;
+            });
+            html += `</tbody></table></div>`;
+
+            contentDiv.innerHTML = html;
+        } else { contentDiv.innerHTML = `<p style="color:red; text-align:center;">❌ Định dạng file lỗi hoặc không tìm thấy dữ liệu.</p>`; }
+    } catch (e) {
+        contentDiv.innerHTML = `<p style="color:red; text-align:center;">❌ Lỗi kết nối.</p>`;
+    }
+    
+    // Nhả lại nút Đóng
+    document.getElementById('largeModalFooter').innerHTML = `<button class="btn-modal-cancel" style="background-color: #6c757d; color: white;" onclick="document.getElementById('largeTableModal').style.display='none'">Đóng lại</button>`;
 }
