@@ -957,16 +957,21 @@ async function processCCCDImage(input) {
     };
 }
 // ==========================================
-// ĐỌC BẢNG ĐIỂM & ĐỐI SÁNH CTĐT (AI)
+// ĐỌC BẢNG ĐIỂM & ĐỐI SÁNH CTĐT (AI) - BẢNG GỌN GÀNG
 // ==========================================
+let currentTranscriptJSON = []; // Lưu tạm bảng điểm vừa quét
+
 async function processTranscriptImage(input) {
     const file = input.files[0];
     if (!file) return;
 
     const fileName = file.name;
     const statusText = document.getElementById('transcript-scan-status');
+    const btnReopen = document.getElementById('btnReopenTranscript');
+    
     statusText.innerText = `⏳ Đang trích xuất dữ liệu: ${fileName}...`;
     statusText.style.color = "#f57c00";
+    btnReopen.style.display = "none"; // Ẩn nút xem lại khi đang quét mới
 
     const sendToBackend = async (base64String, mimeType) => {
         const payload = { imageBase64: base64String, mimeType: mimeType, type: "bangdiem" };
@@ -983,41 +988,40 @@ async function processTranscriptImage(input) {
                 textResult = textResult.replace(/```json/g, '').replace(/```/g, '').trim();
                 
                 try {
-                    currentTranscriptJSON = JSON.parse(textResult); // Lưu tạm để đối sánh
+                    currentTranscriptJSON = JSON.parse(textResult); 
                     
-                    // VẼ BẢNG KẾT QUẢ ĐỌC ĐIỂM
+                    // VẼ BẢNG KẾT QUẢ ĐỌC ĐIỂM (CĂN GIỮA, GỌN GÀNG)
                     let tableHtml = `
-                    <table style="width: 100%; border-collapse: collapse; font-size: 13px; text-align: center;">
-                        <thead style="background: #004d40; color: white; position: sticky; top: 0;">
-                            <tr>
-                                <th style="padding: 10px; border: 1px solid #ddd; width: 40px;">STT</th>
-                                <th style="padding: 10px; border: 1px solid #ddd; text-align: left;">Tên môn học</th>
-                                <th style="padding: 10px; border: 1px solid #ddd; width: 60px;">TC</th>
-                                <th style="padding: 10px; border: 1px solid #ddd; width: 80px;">Đ.Chữ</th>
-                                <th style="padding: 10px; border: 1px solid #ddd; width: 80px;">Hệ 4</th>
-                                <th style="padding: 10px; border: 1px solid #ddd; width: 80px;">Hệ 10</th>
-                            </tr>
-                        </thead>
-                        <tbody>`;
+                    <div style="display:flex; justify-content:center; width:100%; overflow-x: auto; padding: 10px 0;">
+                        <table style="width: max-content !important; min-width: 80%; margin: 0 auto; border-collapse: collapse; background: #fff; box-shadow: 0 0 5px rgba(0,0,0,0.05); font-size: 13px; text-align: center;">
+                            <thead style="background: #004d40; color: white; position: sticky; top: 0; z-index: 10;">
+                                <tr>
+                                    <th style="padding: 8px 15px; border: 1px solid #e0e0e0; white-space: nowrap;">STT</th>
+                                    <th style="padding: 8px 15px; border: 1px solid #e0e0e0; text-align: left; white-space: nowrap;">Tên môn học</th>
+                                    <th style="padding: 8px 15px; border: 1px solid #e0e0e0; white-space: nowrap;">TC</th>
+                                    <th style="padding: 8px 15px; border: 1px solid #e0e0e0; white-space: nowrap;">Đ.Chữ</th>
+                                    <th style="padding: 8px 15px; border: 1px solid #e0e0e0; white-space: nowrap;">Hệ 4</th>
+                                    <th style="padding: 8px 15px; border: 1px solid #e0e0e0; white-space: nowrap;">Hệ 10</th>
+                                </tr>
+                            </thead>
+                            <tbody>`;
                     
                     currentTranscriptJSON.forEach((item, idx) => {
                         tableHtml += `
                             <tr onmouseover="this.style.background='#f1f8e9'" onmouseout="this.style.background='none'">
-                                <td style="padding: 8px; border: 1px solid #ddd;">${idx + 1}</td>
-                                <td style="padding: 8px; border: 1px solid #ddd; text-align: left;"><b>${item.monhoc || ''}</b></td>
-                                <td style="padding: 8px; border: 1px solid #ddd; color: #d84315; font-weight: bold;">${item.tinchi || ''}</td>
-                                <td style="padding: 8px; border: 1px solid #ddd;">${item.diem_chu || ''}</td>
-                                <td style="padding: 8px; border: 1px solid #ddd;">${item.diem_he4 || ''}</td>
-                                <td style="padding: 8px; border: 1px solid #ddd; color: #2e7d32; font-weight: bold;">${item.diem_he10 || ''}</td>
+                                <td style="padding: 6px 15px; border: 1px solid #e0e0e0;">${idx + 1}</td>
+                                <td style="padding: 6px 15px; border: 1px solid #e0e0e0; text-align: left; font-weight: bold;">${item.monhoc || ''}</td>
+                                <td style="padding: 6px 15px; border: 1px solid #e0e0e0; color: #d84315; font-weight: bold;">${item.tinchi || ''}</td>
+                                <td style="padding: 6px 15px; border: 1px solid #e0e0e0;">${item.diem_chu || ''}</td>
+                                <td style="padding: 6px 15px; border: 1px solid #e0e0e0;">${item.diem_he4 || ''}</td>
+                                <td style="padding: 6px 15px; border: 1px solid #e0e0e0; color: #2e7d32; font-weight: bold;">${item.diem_he10 || ''}</td>
                             </tr>`;
                     });
-                    tableHtml += `</tbody></table>`;
+                    tableHtml += `</tbody></table></div>`;
 
-                    // Đổ dữ liệu vào Modal Khổng Lồ
                     document.getElementById('largeModalTitle').innerHTML = `<span>📑</span> Kết quả quét: ${fileName}`;
                     document.getElementById('largeModalContent').innerHTML = tableHtml;
                     
-                    // Thêm nút Bắt đầu đối sánh vào Footer
                     document.getElementById('largeModalFooter').innerHTML = `
                         <button class="btn-modal-cancel" style="background-color: #6c757d; color: white;" onclick="document.getElementById('largeTableModal').style.display='none'">Đóng lại</button>
                         <button class="btn-modal-ok" style="background-color: #1976d2;" onclick="executeCompare()">⚖️ Phân tích & Đối sánh CTĐT</button>
@@ -1026,6 +1030,7 @@ async function processTranscriptImage(input) {
 
                     statusText.innerText = `✅ Đã đọc xong! Vui lòng xem bảng.`;
                     statusText.style.color = "#2e7d32";
+                    btnReopen.style.display = "inline-block"; // Hiện nút xem lại sau khi thành công
                     
                 } catch (e) {
                     statusText.innerText = "❌ Không tìm thấy dữ liệu điểm rõ ràng."; statusText.style.color = "#d32f2f";
@@ -1052,15 +1057,16 @@ async function processTranscriptImage(input) {
     }
 }
 
-// Hàm gửi dữ liệu đi đối sánh
+// ==========================================
+// THỰC THI ĐỐI SÁNH
+// ==========================================
 async function executeCompare() {
     const nganhChon = document.getElementById('nganh').value;
     if (!nganhChon) { alert("⚠️ Vui lòng CHỌN NGÀNH ĐÀO TẠO trên form trước khi bấm đối sánh!"); return; }
 
     const contentDiv = document.getElementById('largeModalContent');
-    contentDiv.innerHTML = `<h3 style="text-align:center; color:#f57c00;">⏳ Processing [${nganhChon.toUpperCase()}]...</h3><p style="text-align:center; font-style:italic;">Đang xử lý. Vui lòng không đóng hoặc refresh trang web.</p>`;
+    contentDiv.innerHTML = `<h3 style="text-align:center; color:#f57c00;">⏳ AI ĐANG ĐỐI SÁNH TÍN CHỈ VỚI NGÀNH [${nganhChon.toUpperCase()}]...</h3><p style="text-align:center; font-style:italic;">Đang áp dụng bộ quy tắc đào tạo của Bộ GD&ĐT. Vui lòng chờ...</p>`;
     
-    // Khóa nút tránh bấm nhiều lần
     document.getElementById('largeModalFooter').innerHTML = `<button class="btn-modal-cancel" style="background-color: #6c757d; color: white; opacity:0.5;" disabled>Đang xử lý...</button>`;
 
     const payload = { type: "doisanh", nganh: nganhChon, transcript: currentTranscriptJSON };
@@ -1074,60 +1080,61 @@ async function executeCompare() {
             const resultJson = JSON.parse(resultText);
 
             let html = `
-                <div style="margin-bottom: 20px;">
+                <div style="margin-bottom: 25px;">
                     <h3 style="color: #2e7d32; border-bottom: 2px solid #2e7d32; padding-bottom: 5px;">✅ CÁC MÔN CÓ THỂ XÉT TƯƠNG ĐƯƠNG</h3>
-                    <table style="width: 100%; border-collapse: collapse; font-size: 13px; text-align: center;">
-                        <thead style="background: #e8f5e9; color: #1b5e20;">
-                            <tr>
-                                <th style="padding: 8px; border: 1px solid #c8e6c9;">Nhóm môn</th>
-                                <th style="padding: 8px; border: 1px solid #c8e6c9;">Môn CTĐT chuẩn</th>
-                                <th style="padding: 8px; border: 1px solid #c8e6c9;">TC chuẩn</th>
-                                <th style="padding: 8px; border: 1px solid #c8e6c9;">Môn SV đã học</th>
-                                <th style="padding: 8px; border: 1px solid #c8e6c9;">TC đã học</th>
-                                <th style="padding: 8px; border: 1px solid #c8e6c9;">Kết luận AI</th>
-                            </tr>
-                        </thead>
-                        <tbody>`;
+                    <div style="display:flex; justify-content:center; width:100%; overflow-x: auto; padding: 10px 0;">
+                        <table style="width: max-content !important; min-width: 90%; margin: 0 auto; border-collapse: collapse; font-size: 13px; text-align: center; box-shadow: 0 0 5px rgba(0,0,0,0.05);">
+                            <thead style="background: #e8f5e9; color: #1b5e20;">
+                                <tr>
+                                    <th style="padding: 8px 15px; border: 1px solid #c8e6c9; white-space: nowrap;">Nhóm môn</th>
+                                    <th style="padding: 8px 15px; border: 1px solid #c8e6c9; white-space: nowrap; text-align:left;">Môn CTĐT chuẩn</th>
+                                    <th style="padding: 8px 15px; border: 1px solid #c8e6c9; white-space: nowrap;">TC chuẩn</th>
+                                    <th style="padding: 8px 15px; border: 1px solid #c8e6c9; white-space: nowrap; text-align:left;">Môn SV đã học</th>
+                                    <th style="padding: 8px 15px; border: 1px solid #c8e6c9; white-space: nowrap;">TC đã học</th>
+                                    <th style="padding: 8px 15px; border: 1px solid #c8e6c9; white-space: nowrap;">Kết luận AI</th>
+                                </tr>
+                            </thead>
+                            <tbody>`;
             resultJson.matched.forEach(m => {
                 let color = m.ket_luan.includes("Đạt") ? "#2e7d32" : "#d84315";
-                html += `<tr>
-                    <td style="padding: 6px; border: 1px solid #c8e6c9; text-align:left;">${m.nhom_mon}</td>
-                    <td style="padding: 6px; border: 1px solid #c8e6c9; text-align:left;"><b>${m.mon_chuan}</b></td>
-                    <td style="padding: 6px; border: 1px solid #c8e6c9;">${m.tin_chi_chuan}</td>
-                    <td style="padding: 6px; border: 1px solid #c8e6c9; text-align:left; color:#1565c0;">${m.mon_da_hoc}</td>
-                    <td style="padding: 6px; border: 1px solid #c8e6c9;">${m.tin_chi_da_hoc}</td>
-                    <td style="padding: 6px; border: 1px solid #c8e6c9; font-weight:bold; color:${color};">${m.ket_luan}</td>
+                html += `<tr onmouseover="this.style.background='#f9fbe7'" onmouseout="this.style.background='none'">
+                    <td style="padding: 6px 15px; border: 1px solid #c8e6c9; text-align:left;">${m.nhom_mon}</td>
+                    <td style="padding: 6px 15px; border: 1px solid #c8e6c9; text-align:left;"><b>${m.mon_chuan}</b></td>
+                    <td style="padding: 6px 15px; border: 1px solid #c8e6c9;">${m.tin_chi_chuan}</td>
+                    <td style="padding: 6px 15px; border: 1px solid #c8e6c9; text-align:left; color:#1565c0;">${m.mon_da_hoc}</td>
+                    <td style="padding: 6px 15px; border: 1px solid #c8e6c9;">${m.tin_chi_da_hoc}</td>
+                    <td style="padding: 6px 15px; border: 1px solid #c8e6c9; font-weight:bold; color:${color};">${m.ket_luan}</td>
                 </tr>`;
             });
-            html += `</tbody></table></div>`;
+            html += `</tbody></table></div></div>`;
 
             html += `
                 <div>
                     <h3 style="color: #d32f2f; border-bottom: 2px solid #d32f2f; padding-bottom: 5px;">⚠️ CÁC MÔN SINH VIÊN CHƯA HỌC (CHƯA ĐỐI SÁNH ĐƯỢC)</h3>
-                    <table style="width: 100%; border-collapse: collapse; font-size: 13px; text-align: center;">
-                        <thead style="background: #ffebee; color: #b71c1c;">
-                            <tr>
-                                <th style="padding: 8px; border: 1px solid #ffcdd2;">Nhóm môn</th>
-                                <th style="padding: 8px; border: 1px solid #ffcdd2; text-align:left;">Tên môn học chuẩn</th>
-                                <th style="padding: 8px; border: 1px solid #ffcdd2; width: 100px;">TC yêu cầu</th>
-                            </tr>
-                        </thead>
-                        <tbody>`;
+                    <div style="display:flex; justify-content:center; width:100%; overflow-x: auto; padding: 10px 0;">
+                        <table style="width: max-content !important; min-width: 90%; margin: 0 auto; border-collapse: collapse; font-size: 13px; text-align: center; box-shadow: 0 0 5px rgba(0,0,0,0.05);">
+                            <thead style="background: #ffebee; color: #b71c1c;">
+                                <tr>
+                                    <th style="padding: 8px 15px; border: 1px solid #ffcdd2; white-space: nowrap;">Nhóm môn</th>
+                                    <th style="padding: 8px 15px; border: 1px solid #ffcdd2; white-space: nowrap; text-align:left;">Tên môn học chuẩn</th>
+                                    <th style="padding: 8px 15px; border: 1px solid #ffcdd2; white-space: nowrap;">TC yêu cầu</th>
+                                </tr>
+                            </thead>
+                            <tbody>`;
             resultJson.unmatched.forEach(u => {
-                html += `<tr>
-                    <td style="padding: 6px; border: 1px solid #ffcdd2; text-align:left;">${u.nhom_mon}</td>
-                    <td style="padding: 6px; border: 1px solid #ffcdd2; text-align:left; font-weight:bold;">${u.mon_chuan}</td>
-                    <td style="padding: 6px; border: 1px solid #ffcdd2; font-weight:bold; color:#d32f2f;">${u.tin_chi_chuan}</td>
+                html += `<tr onmouseover="this.style.background='#fff3e0'" onmouseout="this.style.background='none'">
+                    <td style="padding: 6px 15px; border: 1px solid #ffcdd2; text-align:left;">${u.nhom_mon}</td>
+                    <td style="padding: 6px 15px; border: 1px solid #ffcdd2; text-align:left; font-weight:bold;">${u.mon_chuan}</td>
+                    <td style="padding: 6px 15px; border: 1px solid #ffcdd2; font-weight:bold; color:#d32f2f;">${u.tin_chi_chuan}</td>
                 </tr>`;
             });
-            html += `</tbody></table></div>`;
+            html += `</tbody></table></div></div>`;
 
             contentDiv.innerHTML = html;
-        } else { contentDiv.innerHTML = `<p style="color:red; text-align:center;">❌ Định dạng file lỗi hoặc không tìm thấy dữ liệu.</p>`; }
+        } else { contentDiv.innerHTML = `<p style="color:red; text-align:center;">❌ AI trả về định dạng lỗi hoặc không tìm thấy dữ liệu.</p>`; }
     } catch (e) {
-        contentDiv.innerHTML = `<p style="color:red; text-align:center;">❌ Lỗi kết nối.</p>`;
+        contentDiv.innerHTML = `<p style="color:red; text-align:center;">❌ Lỗi kết nối tới hệ thống AI.</p>`;
     }
-    
-    // Nhả lại nút Đóng
+    // Nhả lại nút Đóng    
     document.getElementById('largeModalFooter').innerHTML = `<button class="btn-modal-cancel" style="background-color: #6c757d; color: white;" onclick="document.getElementById('largeTableModal').style.display='none'">Đóng lại</button>`;
 }
