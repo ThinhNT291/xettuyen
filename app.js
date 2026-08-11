@@ -959,8 +959,6 @@ async function processCCCDImage(input) {
 // ==========================================
 // ĐỌC BẢNG ĐIỂM & ĐỐI SÁNH CTĐT (AI) - BẢNG GỌN GÀNG
 // ==========================================
-let currentTranscriptJSON = []; // Lưu tạm bảng điểm vừa quét
-
 async function processTranscriptImage(input) {
     const file = input.files[0];
     if (!file) return;
