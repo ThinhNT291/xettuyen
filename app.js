@@ -956,32 +956,25 @@ async function processCCCDImage(input) {
     };
 }
 // ==========================================
-// TÍNH NĂNG ĐỌC BẢNG ĐIỂM (HỖ TRỢ ẢNH + PDF)
+// TÍNH NĂNG ĐỌC BẢNG ĐIỂM (HIỂN THỊ MODAL BẢNG + TÊN FILE)
 // ==========================================
 async function processTranscriptImage(input) {
     const file = input.files[0];
     if (!file) return;
 
+    const fileName = file.name; // Lấy tên file
     const statusText = document.getElementById('transcript-scan-status');
-    const resultBox = document.getElementById('transcript-result');
-    statusText.innerText = "⏳ Đang phân tích " + (file.type === 'application/pdf' ? "tài liệu PDF..." : "ảnh...");
+    // Không dùng textarea nữa nên ta có thể bỏ phần xử lý resultBox
+    
+    statusText.innerText = `⏳ Đang phân tích file: ${fileName}...`;
     statusText.style.color = "#f57c00";
-    resultBox.style.display = "none";
-    resultBox.value = "";
 
-    // Hàm gửi dữ liệu lên Trạm trung chuyển
     const sendToBackend = async (base64String, mimeType) => {
-        const payload = {
-            imageBase64: base64String,
-            mimeType: mimeType,
-            type: "bangdiem"
-        };
+        const payload = { imageBase64: base64String, mimeType: mimeType, type: "bangdiem" };
 
         try {
             const response = await fetch(API_QUET_CCCD, {
-                method: "POST",
-                headers: { "Content-Type": "text/plain;charset=utf-8" },
-                body: JSON.stringify(payload)
+                method: "POST", headers: { "Content-Type": "text/plain;charset=utf-8" }, body: JSON.stringify(payload)
             });
 
             const data = await response.json();
@@ -992,14 +985,42 @@ async function processTranscriptImage(input) {
                 
                 try {
                     const extractedArray = JSON.parse(textResult);
-                    let finalString = "Danh sách điểm AI đọc được:\n\n";
-                    extractedArray.forEach(item => {
-                        finalString += `- Môn ${item.monhoc}: ${item.diem}\n`;
+                    
+                    // VẼ BẢNG HTML KẾT QUẢ
+                    let tableHtml = `
+                    <div style="max-height: 400px; overflow-y: auto;">
+                        <table style="width: 100%; border-collapse: collapse; font-size: 13px; text-align: center;">
+                            <thead style="background: #004d40; color: white; position: sticky; top: 0;">
+                                <tr>
+                                    <th style="padding: 8px; border: 1px solid #ddd;">STT</th>
+                                    <th style="padding: 8px; border: 1px solid #ddd; text-align: left;">Tên môn học</th>
+                                    <th style="padding: 8px; border: 1px solid #ddd;">Số TC</th>
+                                    <th style="padding: 8px; border: 1px solid #ddd;">Điểm</th>
+                                </tr>
+                            </thead>
+                            <tbody>`;
+                    
+                    extractedArray.forEach((item, idx) => {
+                        tableHtml += `
+                                <tr onmouseover="this.style.background='#f1f8e9'" onmouseout="this.style.background='none'">
+                                    <td style="padding: 6px; border: 1px solid #ddd;">${idx + 1}</td>
+                                    <td style="padding: 6px; border: 1px solid #ddd; text-align: left;"><b>${item.monhoc}</b></td>
+                                    <td style="padding: 6px; border: 1px solid #ddd; color: #d84315; font-weight: bold;">${item.tinchi}</td>
+                                    <td style="padding: 6px; border: 1px solid #ddd; color: #2e7d32; font-weight: bold;">${item.diem}</td>
+                                </tr>`;
                     });
+                    
+                    tableHtml += `</tbody></table></div>`;
 
-                    resultBox.value = finalString;
-                    resultBox.style.display = "block";
-                    statusText.innerText = "✅ Đọc thành công!";
+                    // Hiển thị ra Modal chung của hệ thống
+                    const modal = document.getElementById('customModal');
+                    document.getElementById('modalHeader').className = 'modal-header info';
+                    document.getElementById('modalHeader').innerHTML = `<span>📑</span> Kết quả Scan: ${fileName}`;
+                    document.getElementById('modalBody').innerHTML = tableHtml;
+                    document.getElementById('modalFooter').innerHTML = `<button class="btn-modal-ok" onclick="document.getElementById('customModal').style.display='none'">Đóng lại</button>`;
+                    modal.style.display = 'flex';
+
+                    statusText.innerText = `✅ Scan thành công file: ${fileName}`;
                     statusText.style.color = "#2e7d32";
                     
                 } catch (parseError) {
@@ -1007,50 +1028,31 @@ async function processTranscriptImage(input) {
                     statusText.style.color = "#d32f2f";
                 }
             } else {
-                let errMsg = data.error ? (typeof data.error === 'string' ? data.error : (data.error.message || JSON.stringify(data.error))) : "Không tìm thấy dữ liệu.";
-                statusText.innerText = "❌ " + errMsg;
+                statusText.innerText = "❌ Lỗi: Không thể trích xuất dữ liệu.";
                 statusText.style.color = "#d32f2f";
             }
         } catch (error) {
             statusText.innerText = "❌ Lỗi kết nối.";
             statusText.style.color = "#d32f2f";
         }
-        input.value = ""; // Reset file input
+        input.value = ""; 
     };
 
-    // PHÂN LOẠI FILE: PDF hay Ảnh?
     if (file.type === 'application/pdf') {
-        // Nếu là PDF -> Đọc nguyên bản Base64 gửi đi luôn (Không qua Canvas)
         const reader = new FileReader();
-        reader.onloadend = () => {
-            const base64String = reader.result.split(',')[1];
-            sendToBackend(base64String, 'application/pdf');
-        };
+        reader.onloadend = () => { sendToBackend(reader.result.split(',')[1], 'application/pdf'); };
         reader.readAsDataURL(file);
     } else {
-        // Nếu là Ảnh -> Cho qua "Máy ép Canvas" để giảm dung lượng
         const img = new Image();
         img.src = URL.createObjectURL(file);
         img.onload = () => {
             const canvas = document.createElement('canvas');
             const MAX_WIDTH = 1200; 
-            let width = img.width;
-            let height = img.height;
-
-            if (width > MAX_WIDTH) {
-                height = Math.round((height * MAX_WIDTH) / width);
-                width = MAX_WIDTH;
-            }
-
-            canvas.width = width;
-            canvas.height = height;
-            const ctx = canvas.getContext('2d');
-            ctx.drawImage(img, 0, 0, width, height);
-
-            const dataUrl = canvas.toDataURL('image/jpeg', 0.8);
-            const base64String = dataUrl.split(',')[1];
-            
-            sendToBackend(base64String, 'image/jpeg');
+            let width = img.width; let height = img.height;
+            if (width > MAX_WIDTH) { height = Math.round((height * MAX_WIDTH) / width); width = MAX_WIDTH; }
+            canvas.width = width; canvas.height = height;
+            const ctx = canvas.getContext('2d'); ctx.drawImage(img, 0, 0, width, height);
+            sendToBackend(canvas.toDataURL('image/jpeg', 0.8).split(',')[1], 'image/jpeg');
         };
     }
 }
