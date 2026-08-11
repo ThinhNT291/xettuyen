@@ -398,5 +398,26 @@
 <!-- GỌI SCRIPT -->
 <script src="data_config.js"></script>
 <script src="app.js"></script>
+
+
+<!-- KHUNG MODAL HIỂN THỊ BẢNG (DÀNH CHO BẢNG ĐIỂM & ĐỐI SÁNH) -->
+<div id="largeTableModal" class="modal-overlay" style="display:none; z-index: 10500;">
+    <div class="modal-box" style="max-width: 1100px; width: 95%; height: 85vh; display: flex; flex-direction: column;">
+        <div class="modal-header info" style="flex-direction: column; align-items: flex-start; gap: 10px; padding: 15px 20px;">
+            <div style="display: flex; justify-content: space-between; width: 100%;">
+                <span id="largeModalTitle" style="font-weight: bold; font-size: 16px; color: #fff;">📑 KẾT QUẢ PHÂN TÍCH</span>
+                <span style="cursor: pointer; font-size: 20px; line-height: 1; color: #ffeb3b;" onclick="document.getElementById('largeTableModal').style.display='none'">✖</span>
+            </div>
+        </div>
+        <div class="modal-body" style="flex: 1; padding: 0; overflow: auto; background: #fff;">
+            <div id="largeModalContent" style="padding: 15px;">
+                <!-- Bảng dữ liệu sẽ được AI nhúng vào đây -->
+            </div>
+        </div>
+        <div id="largeModalFooter" class="modal-footer" style="background: #fdfdfd; padding: 15px; border-top: 1px solid #ddd; display: flex; justify-content: flex-end; gap: 10px;">
+            <button class="btn-modal-cancel" style="background-color: #6c757d; color: white;" onclick="document.getElementById('largeTableModal').style.display='none'">Đóng</button>
+        </div>
+    </div>
+</div>
 </body>
 </html>
