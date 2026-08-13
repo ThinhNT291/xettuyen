@@ -1023,9 +1023,32 @@ window.addEventListener('keydown', function(event) {
     }
 });
 // ==========================================
-// TÍNH NĂNG ĐỌC CCCD BẰNG GEMINI API (CÓ TỰ ĐỘNG NÉN ẢNH)
+// TÍNH NĂNG ĐỌC CCCD / HỘ CHIẾU BẰNG GEMINI API (CÓ TỰ ĐỘNG NÉN ẢNH)
 // ==========================================
 const API_QUET_CCCD = "https://script.google.com/macros/s/AKfycbzWI0IHShoBfNSBZXw46lbNbhgKJRN-jP0ckQXdY3-yFBFTLu40id6_P9Ufn78Lx4xl/exec";
+
+// So sánh 2 ngày dạng "YYYY-MM-DD" (chuỗi) — tránh lệch múi giờ khi new Date() parse chuỗi ISO.
+// Trả về: âm nếu a < b, dương nếu a > b, 0 nếu bằng nhau. Trả về NaN nếu chuỗi không hợp lệ.
+function compareIsoDates(a, b) {
+    if (!/^\d{4}-\d{2}-\d{2}$/.test(a) || !/^\d{4}-\d{2}-\d{2}$/.test(b)) return NaN;
+    return a.localeCompare(b);
+}
+
+function todayIsoDate() {
+    const d = new Date();
+    const mm = String(d.getMonth() + 1).padStart(2, '0');
+    const dd = String(d.getDate()).padStart(2, '0');
+    return `${d.getFullYear()}-${mm}-${dd}`;
+}
+
+// Hộ chiếu VN có hiệu lực 10 năm kể từ ngày cấp — cộng thêm 10 năm, giữ nguyên tháng/ngày.
+function addYearsIso(isoDate, years) {
+    const [y, m, d] = isoDate.split('-').map(Number);
+    const dt = new Date(y + years, m - 1, d);
+    const mm = String(dt.getMonth() + 1).padStart(2, '0');
+    const dd = String(dt.getDate()).padStart(2, '0');
+    return `${dt.getFullYear()}-${mm}-${dd}`;
+}
 
 async function processCCCDImage(input) {
     const file = input.files[0];
@@ -1061,8 +1084,8 @@ async function processCCCDImage(input) {
 
          const payload = {
             imageBase64: base64String,
-            mimeType: 'image/jpeg', // <--- Phải có dấu phẩy ở đây!
-            type: "cccd" // <--- Dòng mới bổ sung
+            mimeType: 'image/jpeg',
+            type: "cccd" // Backend tự nhận diện CCCD hay Hộ chiếu trong cùng nhánh này
         };
 
         try {
@@ -1080,12 +1103,45 @@ async function processCCCDImage(input) {
                 
                 try {
                     const extracted = JSON.parse(textResult);
+                    const loaiGiayTo = String(extracted.loai_giay_to || "").trim().toLowerCase();
+                    const soGiayTo = extracted.so_giay_to || extracted.cccd || "";
+                    const today = todayIsoDate();
 
-                    if(extracted.cccd) document.getElementById('cccd').value = extracted.cccd;
-                    if(extracted.hoten) document.getElementById('hoten').value = extracted.hoten;
-                    if(extracted.ngaysinh) document.getElementById('ngaysinh').value = extracted.ngaysinh;
-                    
-                    statusText.innerText = "✅ Điền thành công !";
+                    // ====== ĐỐI CHIẾU HIỆU LỰC GIẤY TỜ — TÍNH TOÁN TRÊN CLIENT, KHÔNG TIN AI TÍNH NGÀY ======
+                    let hetHan = false;
+                    let hanSuDung = ""; // chỉ để hiển thị cho người dùng biết hạn thật sự là ngày nào
+
+                    if (loaiGiayTo === "hochieu") {
+                        const ngayCap = extracted.ngay_cap || "";
+                        if (ngayCap) {
+                            hanSuDung = addYearsIso(ngayCap, 10);
+                            const cmp = compareIsoDates(today, hanSuDung);
+                            if (!isNaN(cmp) && cmp > 0) hetHan = true;
+                        }
+                    } else {
+                        // Mặc định coi là CCCD nếu AI không xác định rõ loại giấy tờ
+                        const ngayHetHan = extracted.ngay_het_han || "";
+                        if (ngayHetHan) {
+                            hanSuDung = ngayHetHan;
+                            const cmp = compareIsoDates(today, ngayHetHan);
+                            if (!isNaN(cmp) && cmp > 0) hetHan = true;
+                        }
+                    }
+
+                    if (hetHan) {
+                        statusText.innerText = `❌ Giấy tờ hết hiệu lực (hạn: ${hanSuDung}) — không thể sử dụng.`;
+                        statusText.style.color = "#d32f2f";
+                        showAlert(`${loaiGiayTo === "hochieu" ? "Hộ chiếu" : "CCCD"} này đã HẾT HIỆU LỰC từ ngày ${hanSuDung}.\n\nVui lòng dùng giấy tờ còn hiệu lực, hệ thống sẽ không tự động điền dữ liệu từ ảnh này.`, "⚠️ GIẤY TỜ HẾT HIỆU LỰC", true);
+                        input.value = "";
+                        return;
+                    }
+
+                    if (soGiayTo) document.getElementById('cccd').value = soGiayTo;
+                    if (extracted.hoten) document.getElementById('hoten').value = extracted.hoten;
+                    if (extracted.ngaysinh) document.getElementById('ngaysinh').value = extracted.ngaysinh;
+
+                    const loaiLabel = loaiGiayTo === "hochieu" ? "Hộ chiếu" : "CCCD";
+                    statusText.innerText = hanSuDung ? `✅ Điền thành công (${loaiLabel}, còn hiệu lực đến ${hanSuDung})!` : `✅ Điền thành công (${loaiLabel})!`;
                     statusText.style.color = "#2e7d32";
                     
                     if (typeof autoCheckAdmission === 'function') autoCheckAdmission(); 
