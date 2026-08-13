@@ -3,6 +3,57 @@ let editingIndex = -1;
 let lookupData = [];
 let currentAction = "INSERT"; 
 
+// ==========================================
+// ĐĂNG NHẬP GOOGLE (XÁC THỰC TÀI KHOẢN NHẬP LIỆU)
+// ==========================================
+let currentIdToken = null;   // JWT gốc — gửi lên server để server tự xác minh (chống giả mạo)
+let currentUserEmail = "";   // chỉ dùng để hiển thị, KHÔNG phải nguồn dữ liệu tin cậy
+let currentTokenExp = 0;     // epoch giây, lấy từ claim "exp" của token
+
+function isLoggedIn() {
+    return !!currentIdToken && (Date.now() / 1000) < currentTokenExp;
+}
+
+function updateAccountLabel() {
+    const label = document.getElementById('current-account-label');
+    if (!label) return;
+    if (isLoggedIn()) {
+        label.innerText = `👤 ${currentUserEmail}`;
+        label.style.color = "#2e7d32";
+    } else {
+        label.innerText = "⚠️ Chưa đăng nhập Google";
+        label.style.color = "#d32f2f";
+    }
+}
+
+function handleGoogleLogin(response) {
+    try {
+        const payload = JSON.parse(atob(response.credential.split('.')[1].replace(/-/g, '+').replace(/_/g, '/')));
+        currentIdToken = response.credential;
+        currentUserEmail = payload.email;
+        currentTokenExp = payload.exp;
+        sessionStorage.setItem('gg_id_token', currentIdToken);
+        sessionStorage.setItem('gg_user_email', currentUserEmail);
+        sessionStorage.setItem('gg_token_exp', String(currentTokenExp));
+        updateAccountLabel();
+    } catch (e) {
+        console.error("Lỗi xử lý đăng nhập Google:", e);
+        showAlert("Không đọc được thông tin đăng nhập Google, vui lòng thử lại.", "❌ LỖI ĐĂNG NHẬP", true);
+    }
+}
+
+// Khôi phục phiên đăng nhập nếu còn hạn (token Google JWT sống ~1 giờ)
+window.addEventListener('DOMContentLoaded', () => {
+    const savedToken = sessionStorage.getItem('gg_id_token');
+    const savedExp = parseInt(sessionStorage.getItem('gg_token_exp') || "0", 10);
+    if (savedToken && savedExp > Date.now() / 1000) {
+        currentIdToken = savedToken;
+        currentUserEmail = sessionStorage.getItem('gg_user_email') || "";
+        currentTokenExp = savedExp;
+    }
+    updateAccountLabel();
+});
+
 const sysSep = (1.1).toLocaleString().substring(1, 2);
 const wrongSep = sysSep === '.' ? ',' : '.';
 
@@ -442,6 +493,8 @@ function addRow() {
     const newRowData = {
         "STT": editingIndex !== -1 ? dataList[editingIndex]["STT"] : dataList.length + 1, "TRẠNG THÁI ĐẨY": "Waiting", 
         "_Action": currentAction, 
+        // Chỉ để HIỂN THỊ trong bảng tạm — giá trị THẬT SỰ ghi vào Sheet do server tự xác minh qua idToken, không tin theo field này.
+        "TÀI KHOẢN NHẬP LIỆU": currentUserEmail || "(chưa đăng nhập)",
         
         "CĂN CƯỚC": fields[0].value.trim(), "TÊN SINH VIÊN": fields[1].value.trim(), "NGÀY SINH": formatVnDate(fields[2].value),
         "NGÀNH": fields[3].value, "KHÓA": fields[4].value, "ĐỐI TƯỢNG ƯU TIÊN": fields[5].value, "KHU VỰC ƯU TIÊN": fields[6].value,
@@ -551,6 +604,12 @@ async function sendToCloud() {
 }
 
 async function executeUploadToCloud(pendingList) {
+    // BẮT BUỘC ĐĂNG NHẬP GOOGLE TRƯỚC KHI GHI DỮ LIỆU
+    if (!isLoggedIn()) {
+        showAlert("Bạn chưa đăng nhập Google hoặc phiên đăng nhập đã hết hạn (token sống khoảng 1 giờ).\n\n👉 Vui lòng bấm nút đăng nhập Google ở đầu trang rồi thử đẩy lại.", "🔒 CẦN ĐĂNG NHẬP", true);
+        return;
+    }
+
     const btnPush = document.getElementById('btnPush'); const originalText = btnPush.innerHTML;
     btnPush.disabled = true; btnPush.innerHTML = "⏳ Processing...";
     
@@ -562,7 +621,12 @@ async function executeUploadToCloud(pendingList) {
     const dataToSend = pendingList.map(row => { const copyRow = { ...row }; delete copyRow["TRẠNG THÁI ĐẨY"]; copyRow["TIME"] = pushTimeText; return copyRow; });
 
     try {
-        const response = await fetch(WEB_APP_URL, { method: "POST", headers: { "Content-Type": "text/plain;charset=utf-8" }, body: JSON.stringify(dataToSend) });
+        const response = await fetch(WEB_APP_URL, {
+            method: "POST",
+            headers: { "Content-Type": "text/plain;charset=utf-8" },
+            // idToken gửi kèm để Apps Script tự xác minh chữ ký + đối chiếu whitelist — chống giả mạo tài khoản.
+            body: JSON.stringify({ idToken: currentIdToken, items: dataToSend })
+        });
         const result = await response.json();
         if (result.status === "success") {
             showAlert(`Đã nạp thành công ${pendingList.length} hồ sơ mới lên hệ thống lúc ${displayTime}!`, "🎉 TRUYỀN DỮ LIỆU THÀNH CÔNG", false, () => {
@@ -740,7 +804,11 @@ function fillFormWithData(rowData) {
         let cleanKey = key.trim().toUpperCase().replace(/\s+/g, ' ');
         normData[cleanKey] = rowData[key];
     }
-    document.getElementById('cccd').value = normData["CĂN CƯỚC"] || normData["SỐ CCCD"] || normData["CCCD"] || "";
+
+    // ĐÃ VÁ LỖI: hàm này trước đây KHÔNG nạp lại số CCCD, khiến ô CCCD trống/sai
+    // -> backend không khớp được hồ sơ cũ -> tạo nhầm thành dòng MỚI thay vì ghi đè.
+    document.getElementById('cccd').value = normData["CCCD"] || normData["CĂN CƯỚC"] || normData["SỐ CCCD"] || "";
+
     document.getElementById('hoten').value = normData["TÊN SINH VIÊN"] || normData["HỌ VÀ TÊN"] || "";
     
     let dob = normData["NGÀY SINH"] || "";
