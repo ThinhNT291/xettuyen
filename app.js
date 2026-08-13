@@ -740,7 +740,7 @@ function fillFormWithData(rowData) {
         let cleanKey = key.trim().toUpperCase().replace(/\s+/g, ' ');
         normData[cleanKey] = rowData[key];
     }
-
+    document.getElementById('cccd').value = normData["CĂN CƯỚC"] || normData["SỐ CCCD"] || normData["CCCD"] || "";
     document.getElementById('hoten').value = normData["TÊN SINH VIÊN"] || normData["HỌ VÀ TÊN"] || "";
     
     let dob = normData["NGÀY SINH"] || "";
