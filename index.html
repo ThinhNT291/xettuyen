@@ -33,6 +33,11 @@
         @media (max-width: 380px) {
             #loginGate .gate-title { font-size: 17px; }
         }
+        /* Màn hình máy tính: mở rộng khung ra để tiêu đề nằm gọn 1 hàng, không bị rớt chữ xuống dòng */
+        @media (min-width: 601px) {
+            #loginGate .gate-box { max-width: 620px; }
+            #loginGate .gate-title { font-size: 24px; white-space: nowrap; }
+        }
     </style>
 </head>
 <body>
@@ -384,7 +389,7 @@
 <div class="copyright">© Liên hệ hỗ trợ: Nguyễn Tiến Thịnh _ 0985-822037</div>
     
 <!-- KHUNG MODAL THAY THẾ ALERT / CONFIRM CỦA TRÌNH DUYỆT -->
-<div id="customModal" class="modal-overlay" style="display:none;">
+<div id="customModal" class="modal-overlay" style="display:none; z-index: 10050;">
     <div class="modal-box">
         <div id="modalHeader" class="modal-header"></div>
         <div id="modalBody" class="modal-body"></div>
