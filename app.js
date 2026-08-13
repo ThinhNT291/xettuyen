@@ -4,6 +4,46 @@ let lookupData = [];
 let currentAction = "INSERT"; 
 
 // ==========================================
+// LƯU TẠM DANH SÁCH CHỜ (CHỐNG MẤT DỮ LIỆU KHI PHẢI ĐĂNG NHẬP LẠI)
+// Mỗi lần bảng thay đổi sẽ tự lưu ra localStorage kèm mốc thời gian.
+// Khi tải lại trang: còn trong 30 phút thì khôi phục, quá hạn thì tự xóa.
+// ==========================================
+const PENDING_STORAGE_KEY = 'tuyensinh_pending_datalist';
+const PENDING_MAX_AGE_MS = 30 * 60 * 1000; // 30 phút
+
+function persistDataList() {
+    try {
+        if (dataList.length === 0) {
+            localStorage.removeItem(PENDING_STORAGE_KEY);
+            return;
+        }
+        localStorage.setItem(PENDING_STORAGE_KEY, JSON.stringify({ savedAt: Date.now(), data: dataList }));
+    } catch (e) { console.error("Không lưu tạm được danh sách chờ:", e); }
+}
+
+// Trả về số hồ sơ vừa khôi phục được (0 nếu không có hoặc đã hết hạn 30 phút).
+function restorePendingDataList() {
+    try {
+        const raw = localStorage.getItem(PENDING_STORAGE_KEY);
+        if (!raw) return 0;
+        const parsed = JSON.parse(raw);
+        if (!parsed || !Array.isArray(parsed.data) || parsed.data.length === 0) {
+            localStorage.removeItem(PENDING_STORAGE_KEY);
+            return 0;
+        }
+        if (Date.now() - (parsed.savedAt || 0) > PENDING_MAX_AGE_MS) {
+            localStorage.removeItem(PENDING_STORAGE_KEY); // quá 30 phút kể từ lần lưu cuối -> hết hạn, xóa
+            return 0;
+        }
+        dataList = parsed.data;
+        return dataList.length;
+    } catch (e) {
+        localStorage.removeItem(PENDING_STORAGE_KEY);
+        return 0;
+    }
+}
+
+// ==========================================
 // ĐĂNG NHẬP GOOGLE (XÁC THỰC TÀI KHOẢN NHẬP LIỆU)
 // ==========================================
 let currentIdToken = null;   // JWT gốc — gửi lên server để server tự xác minh (chống giả mạo)
@@ -81,6 +121,12 @@ async function verifyLoginWithServer(idToken) {
 }
 
 async function handleGoogleLogin(response) {
+    // Báo ngay cho người dùng biết trang đang xử lý, tránh cảm giác "im lìm" trong lúc chờ server xác thực.
+    const gateLabelLoading = document.getElementById('gate-account-label');
+    if (gateLabelLoading) {
+        gateLabelLoading.innerText = "⏳ Đang đăng nhập, vui lòng chờ...";
+        gateLabelLoading.style.color = "#0288d1";
+    }
     try {
         const payload = JSON.parse(atob(response.credential.split('.')[1].replace(/-/g, '+').replace(/_/g, '/')));
         const idToken = response.credential;
@@ -140,6 +186,13 @@ window.addEventListener('DOMContentLoaded', () => {
         clearLoginState();
     }
     updateAccountLabel();
+
+    // Khôi phục danh sách hồ sơ đang chờ (nếu có, còn trong 30 phút) — không phụ thuộc việc đăng nhập lại hay chưa.
+    const restoredCount = restorePendingDataList();
+    if (restoredCount > 0) {
+        renderTable();
+        showAlert(`Đã khôi phục ${restoredCount} hồ sơ đang chờ từ phiên làm việc trước đó (trong vòng 30 phút gần nhất). Bạn có thể tiếp tục nhập hoặc đẩy lên hệ thống.`, "🔄 KHÔI PHỤC DỮ LIỆU CHỜ", false);
+    }
 });
 
 const sysSep = (1.1).toLocaleString().substring(1, 2);
@@ -635,6 +688,8 @@ function renderTable() {
     const pendingCount = dataList.filter(r => r["TRẠNG THÁI ĐẨY"] === "Waiting").length;
     const sb = document.getElementById('statusBar');
     if(sb) sb.innerText = `Tổng số ${dataList.length} hồ sơ (Đang có ${pendingCount} hồ sơ chưa đồng bộ).`;
+
+    persistDataList();
 }
 
 function exportToExcel() {
