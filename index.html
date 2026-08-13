@@ -82,7 +82,7 @@
         <!-- CỘT 2: SỐ CCCD & NÚT SCAN CCCD -->
         <div class="form-group">
             <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 5px; flex-wrap: wrap; gap: 5px;">
-                <label for="cccd" style="margin-bottom: 0;">Số CCCD <span class="req">(*)</span>:</label>
+                <label for="cccd" style="margin-bottom: 0;">Số CCCD/Hộ chiếu <span class="req">(*)</span>:</label>
                 
                 <div style="display: flex; align-items: center; gap: 10px;">
                     <input type="file" id="cccdFile" accept="image/*" style="display: none;" onchange="processCCCDImage(this)">
@@ -90,7 +90,7 @@
                     <button type="button" onclick="document.getElementById('cccdFile').click()" style="background: #4a7536; color: white; border: none; padding: 5px 12px; border-radius: 4px; font-size: 13px; font-weight: bold; cursor: pointer; box-shadow: 0 1px 3px rgba(0,0,0,0.2); white-space: nowrap;">📸 Scan CCCD</button>
                 </div>
             </div>
-            <input type="text" id="cccd" placeholder="Nhập 12 số CCCD" required>
+            <input type="text" id="cccd" placeholder="Nhập CCCD/ Hộ chiếu" required>
         </div>
         <div class="form-group">
             <label for="ngaysinh">Ngày sinh <span class="req">(*)</span>:</label>
