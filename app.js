@@ -35,7 +35,7 @@ function updateAccountLabel() {
             label.innerText = `👤 ${currentUserEmail}`;
             label.style.color = "#2e7d32";
         } else {
-            label.innerText = "⚠️ Chưa đăng nhập Google";
+            label.innerText = "⚠️ Chưa đăng nhập";
             label.style.color = "#d32f2f";
         }
     }
@@ -1054,6 +1054,12 @@ async function processCCCDImage(input) {
     const file = input.files[0];
     if (!file) return;
 
+    if (!isLoggedIn()) {
+        input.value = "";
+        showAlert("Phiên đăng nhập đã hết hạn hoặc chưa đăng nhập, vui lòng đăng nhập lại trước khi quét.", "⚠️ CHƯA ĐĂNG NHẬP", true);
+        return;
+    }
+
     const statusText = document.getElementById('cccd-scan-status');
     statusText.innerText = "⏳ Đang nén ảnh & và phân tích...";
     statusText.style.color = "#f57c00";
@@ -1085,7 +1091,8 @@ async function processCCCDImage(input) {
          const payload = {
             imageBase64: base64String,
             mimeType: 'image/jpeg',
-            type: "cccd" // Backend tự nhận diện CCCD hay Hộ chiếu trong cùng nhánh này
+            type: "cccd", // Backend tự nhận diện CCCD hay Hộ chiếu trong cùng nhánh này
+            idToken: currentIdToken // Bắt buộc — backend chặn nếu thiếu hoặc không nằm trong whitelist
         };
 
         try {
