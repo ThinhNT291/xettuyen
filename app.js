@@ -9,47 +9,135 @@ let currentAction = "INSERT";
 let currentIdToken = null;   // JWT gốc — gửi lên server để server tự xác minh (chống giả mạo)
 let currentUserEmail = "";   // chỉ dùng để hiển thị, KHÔNG phải nguồn dữ liệu tin cậy
 let currentTokenExp = 0;     // epoch giây, lấy từ claim "exp" của token
+let isVerifiedByServer = false; // chỉ true sau khi server xác nhận token hợp lệ + email nằm trong whitelist
 
 function isLoggedIn() {
-    return !!currentIdToken && (Date.now() / 1000) < currentTokenExp;
+    return !!currentIdToken && isVerifiedByServer && (Date.now() / 1000) < currentTokenExp;
+}
+
+// Ẩn/hiện toàn bộ giao diện nhập liệu: chỉ mở khi đã đăng nhập VÀ được server xác nhận whitelist.
+function updateAppGate() {
+    const gate = document.getElementById('loginGate');
+    const app = document.getElementById('mainAppContent');
+    const loggedIn = isLoggedIn();
+    if (gate) gate.style.display = loggedIn ? 'none' : 'flex';
+    if (app) app.style.display = loggedIn ? '' : 'none';
 }
 
 function updateAccountLabel() {
     const label = document.getElementById('current-account-label');
-    if (!label) return;
-    if (isLoggedIn()) {
-        label.innerText = `👤 ${currentUserEmail}`;
-        label.style.color = "#2e7d32";
-    } else {
-        label.innerText = "⚠️ Chưa đăng nhập Google";
-        label.style.color = "#d32f2f";
+    const gateLabel = document.getElementById('gate-account-label');
+    const signoutBtn = document.getElementById('btnSignOut');
+    const loggedIn = isLoggedIn();
+
+    if (label) {
+        if (loggedIn) {
+            label.innerText = `👤 ${currentUserEmail}`;
+            label.style.color = "#2e7d32";
+        } else {
+            label.innerText = "⚠️ Chưa đăng nhập Google";
+            label.style.color = "#d32f2f";
+        }
     }
+    if (gateLabel && !loggedIn) {
+        gateLabel.innerText = "";
+    }
+    if (signoutBtn) signoutBtn.style.display = loggedIn ? '' : 'none';
+
+    updateAppGate();
 }
 
-function handleGoogleLogin(response) {
+function clearLoginState() {
+    currentIdToken = null;
+    currentUserEmail = "";
+    currentTokenExp = 0;
+    isVerifiedByServer = false;
+    sessionStorage.removeItem('gg_id_token');
+    sessionStorage.removeItem('gg_user_email');
+    sessionStorage.removeItem('gg_token_exp');
+    sessionStorage.removeItem('gg_verified');
+}
+
+// Đăng xuất: xoá phiên, tắt auto-select của Google để không tự đăng nhập lại account cũ ngay lập tức.
+function signOutUser() {
+    clearLoginState();
+    try {
+        if (window.google && google.accounts && google.accounts.id) {
+            google.accounts.id.disableAutoSelect();
+        }
+    } catch (e) { /* bỏ qua nếu thư viện Google chưa sẵn sàng */ }
+    updateAccountLabel();
+}
+
+// Gọi lên Apps Script để server tự xác minh chữ ký token + đối chiếu whitelist.
+// KHÔNG tin bất kỳ điều gì ở phía client — chỉ mở khoá giao diện khi server trả về success.
+async function verifyLoginWithServer(idToken) {
+    const response = await fetch(WEB_APP_URL, {
+        method: "POST",
+        headers: { "Content-Type": "text/plain;charset=utf-8" },
+        body: JSON.stringify({ idToken: idToken, action: "checkLogin" })
+    });
+    return await response.json();
+}
+
+async function handleGoogleLogin(response) {
     try {
         const payload = JSON.parse(atob(response.credential.split('.')[1].replace(/-/g, '+').replace(/_/g, '/')));
-        currentIdToken = response.credential;
-        currentUserEmail = payload.email;
-        currentTokenExp = payload.exp;
+        const idToken = response.credential;
+        const email = payload.email;
+        const exp = payload.exp;
+
+        // Trước khi mở khoá bất cứ thứ gì: bắt server xác minh token + whitelist.
+        const result = await verifyLoginWithServer(idToken);
+
+        if (result.status !== "success") {
+            clearLoginState();
+            try {
+                if (window.google && google.accounts && google.accounts.id) {
+                    google.accounts.id.disableAutoSelect();
+                }
+            } catch (e) { /* ignore */ }
+            updateAccountLabel();
+            const gateLabel = document.getElementById('gate-account-label');
+            if (gateLabel) {
+                gateLabel.innerText = "🚫 " + (result.message || "Tài khoản này chưa được cấp quyền nhập liệu.");
+                gateLabel.style.color = "#d32f2f";
+            }
+            showAlert(result.message || "Tài khoản này chưa được cấp quyền nhập liệu.", "🚫 KHÔNG CÓ QUYỀN TRUY CẬP", true);
+            return;
+        }
+
+        currentIdToken = idToken;
+        currentUserEmail = result.email || email;
+        currentTokenExp = exp;
+        isVerifiedByServer = true;
+
         sessionStorage.setItem('gg_id_token', currentIdToken);
         sessionStorage.setItem('gg_user_email', currentUserEmail);
         sessionStorage.setItem('gg_token_exp', String(currentTokenExp));
+        sessionStorage.setItem('gg_verified', '1');
         updateAccountLabel();
     } catch (e) {
         console.error("Lỗi xử lý đăng nhập Google:", e);
+        clearLoginState();
+        updateAccountLabel();
         showAlert("Không đọc được thông tin đăng nhập Google, vui lòng thử lại.", "❌ LỖI ĐĂNG NHẬP", true);
     }
 }
 
-// Khôi phục phiên đăng nhập nếu còn hạn (token Google JWT sống ~1 giờ)
+// Khôi phục phiên đăng nhập nếu còn hạn (token Google JWT sống ~1 giờ) VÀ đã từng được server xác nhận.
+// Phiên chưa từng được xác nhận (ví dụ dữ liệu cũ còn sót) sẽ KHÔNG được khôi phục — bắt đăng nhập lại.
 window.addEventListener('DOMContentLoaded', () => {
     const savedToken = sessionStorage.getItem('gg_id_token');
     const savedExp = parseInt(sessionStorage.getItem('gg_token_exp') || "0", 10);
-    if (savedToken && savedExp > Date.now() / 1000) {
+    const savedVerified = sessionStorage.getItem('gg_verified') === '1';
+    if (savedToken && savedVerified && savedExp > Date.now() / 1000) {
         currentIdToken = savedToken;
         currentUserEmail = sessionStorage.getItem('gg_user_email') || "";
         currentTokenExp = savedExp;
+        isVerifiedByServer = true;
+    } else {
+        clearLoginState();
     }
     updateAccountLabel();
 });
