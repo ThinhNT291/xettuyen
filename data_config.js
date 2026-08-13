@@ -5,6 +5,11 @@ const WEB_APP_URL = "https://script.google.com/macros/s/AKfycbxzIuSm2Gn1tYzEv0A1
 const KV_CSV_URL = "https://docs.google.com/spreadsheets/d/e/2PACX-1vSrXGUBLFQJJy2lIJ_O1u_8iHupsFVt8BPYmLzgAMPI0E3hecCanmaUJ831RvgF-A/pub?gid=1073726209&single=true&output=csv";
 
 // ==========================================
+// ĐĂNG NHẬP GOOGLE (XÁC THỰC TÀI KHOẢN NHẬP LIỆU)
+// ==========================================
+const GOOGLE_CLIENT_ID = "311965248456-01ts8h9g6tuj0slob58n8vrfm091c4u7.apps.googleusercontent.com";
+
+// ==========================================
 // BỘ TỪ ĐIỂN XÉT TUYỂN
 // ==========================================
 const DICT_KHU_VUC = { "KV 01": 0.75, "KV 02-NT": 0.5, "KV 02": 0.25, "KV 03": 0 };
