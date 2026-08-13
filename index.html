@@ -9,18 +9,25 @@
    
        <script src="https://cdn.sheetjs.com/xlsx-latest/package/dist/xlsx.full.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/PapaParse/5.4.1/papaparse.min.js"></script>
+    <script src="https://accounts.google.com/gsi/client" async defer></script>
 </head>
 <body>
-<div id="g_id_onload"
-     data-client_id="311965248456-01ts8h9g6tuj0slob58n8vrfm091c4u7.apps.googleusercontent.com"
-     data-callback="handleGoogleLogin"
-     data-auto_select="true">
-</div>
-<div class="g_id_signin" data-type="standard"></div>
-<span id="current-account-label" style="font-weight:bold; margin-left:8px;"></span>
-    
+
 <div class="container">
     <h2>📝 CỔNG NHẬP LIỆU HỒ SƠ TUYỂN SINH</h2>
+
+    <!-- ========================================================
+         ĐĂNG NHẬP GOOGLE — XÁC THỰC TÀI KHOẢN NHẬP LIỆU
+         ======================================================== -->
+    <div style="display:flex; align-items:center; justify-content:flex-end; gap:12px; flex-wrap:wrap; margin-bottom:12px; padding:8px 10px; background:#f5f5f5; border-radius:6px; border:1px solid #e0e0e0;">
+        <div id="g_id_onload"
+             data-client_id="311965248456-01ts8h9g6tuj0slob58n8vrfm091c4u7.apps.googleusercontent.com"
+             data-callback="handleGoogleLogin"
+             data-auto_select="true">
+        </div>
+        <div class="g_id_signin" data-type="standard" data-size="medium" data-shape="pill"></div>
+        <span id="current-account-label" style="font-weight:bold; font-size:13px;"></span>
+    </div>
     
 <div class="section-title">I. THÔNG TIN CHUNG</div>
     <div class="form-grid">
