@@ -788,7 +788,9 @@ function parseExcelFileToItems(file) {
                     items.push(obj);
                 });
 
-                resolve(items);
+                // Trả về cả rawHeaders (nguyên trạng, CHƯA loại cột hệ thống) để so khớp 100% với tiêu đề
+                // thật trên sheet trung gian trước khi cho phép đẩy dữ liệu.
+                resolve({ headers: rawHeaders, items: items });
             } catch (err) {
                 reject("Không đọc được nội dung file (có thể sai định dạng): " + err);
             }
@@ -796,6 +798,37 @@ function parseExcelFileToItems(file) {
         reader.onerror = function () { reject("Không đọc được file, vui lòng thử chọn lại."); };
         reader.readAsArrayBuffer(file);
     });
+}
+
+// ==========================================
+// KIỂM TRA KHỚP TIÊU ĐỀ FILE MẪU VỚI SHEET TRUNG GIAN — BẮT BUỘC KHỚP 100% MỚI CHO ĐẨY DỮ LIỆU
+// Tiêu đề chuẩn được lấy TRỰC TIẾP từ hàng tiêu đề thật trên Google Sheet trung gian (không hard-code
+// sẵn ở client) để không bị lệch khi sheet đổi cột mà file mẫu tải về trước đó chưa cập nhật kịp.
+// ==========================================
+async function fetchIntermediateSheetHeader() {
+    const response = await fetch(WEB_APP_URL, {
+        method: "POST",
+        headers: { "Content-Type": "text/plain;charset=utf-8" },
+        body: JSON.stringify({ idToken: currentIdToken, action: "getImportHeader" })
+    });
+    const result = await response.json();
+    if (result.status !== "success" || !Array.isArray(result.headers)) {
+        throw new Error(result.message || "Không lấy được tiêu đề chuẩn từ sheet trung gian.");
+    }
+    return result.headers.map(h => String(h || "").trim());
+}
+
+// So khớp 100%: đúng số lượng cột, đúng tên từng cột, đúng thứ tự. Trả về danh sách điểm khác biệt
+// (mảng rỗng nghĩa là khớp hoàn toàn) để hiển thị rõ cho người dùng biết sai ở đâu.
+function diffHeaders(fileHeaders, expectedHeaders) {
+    const diffs = [];
+    const maxLen = Math.max(fileHeaders.length, expectedHeaders.length);
+    for (let i = 0; i < maxLen; i++) {
+        const a = fileHeaders[i] || "(thiếu cột)";
+        const b = expectedHeaders[i] || "(thừa cột)";
+        if (a !== b) diffs.push(`Cột ${i + 1}: file có "${a}" — hệ thống cần "${b}"`);
+    }
+    return diffs;
 }
 
 async function executeImportExcelUpload() {
@@ -810,29 +843,57 @@ async function executeImportExcelUpload() {
     const originalText = btn.innerHTML;
     btn.disabled = true; btn.innerHTML = "⏳ Đang đọc file...";
 
-    let items;
+    let fileHeaders, items;
     try {
-        items = await parseExcelFileToItems(importSelectedFile);
+        const parsed = await parseExcelFileToItems(importSelectedFile);
+        fileHeaders = parsed.headers;
+        items = parsed.items;
     } catch (err) {
         showAlert(String(err), "❌ LỖI ĐỌC FILE", true);
         btn.disabled = false; btn.innerHTML = originalText;
         return;
     }
 
-    btn.disabled = false; btn.innerHTML = originalText;
-
     if (items.length === 0) {
+        btn.disabled = false; btn.innerHTML = originalText;
         showAlert("Không tìm thấy hồ sơ nào để nhập trong file (đã bỏ qua dòng tiêu đề, dòng mẫu và các dòng trống).", "⚠️ KHÔNG CÓ DỮ LIỆU", true);
         return;
     }
 
+    // BẮT BUỘC: tiêu đề file phải khớp 100% với tiêu đề thật trên sheet trung gian — không khớp thì
+    // báo lỗi rõ ràng và DỪNG LẠI NGAY, không cho đẩy dữ liệu lên.
+    btn.innerHTML = "⏳ Đang kiểm tra tiêu đề...";
+    let expectedHeaders;
+    try {
+        expectedHeaders = await fetchIntermediateSheetHeader();
+    } catch (err) {
+        btn.disabled = false; btn.innerHTML = originalText;
+        showAlert(`Không kiểm tra được tiêu đề file với hệ thống, dữ liệu CHƯA được đẩy lên.\n\n👉 Chi tiết lỗi: ${err}`, "❌ LỖI KIỂM TRA TIÊU ĐỀ", true);
+        return;
+    }
+
+    const diffs = diffHeaders(fileHeaders, expectedHeaders);
+    if (diffs.length > 0) {
+        btn.disabled = false; btn.innerHTML = originalText;
+        showAlert(
+            `File KHÔNG khớp tiêu đề với hệ thống — dữ liệu CHƯA được đẩy lên.\n\n` +
+            diffs.slice(0, 10).join('\n') +
+            (diffs.length > 10 ? `\n...và ${diffs.length - 10} khác biệt khác` : '') +
+            `\n\n👉 Vui lòng tải lại file mẫu mới nhất ("Tải file mẫu") và nhập lại từ đầu, không tự ý đổi tên/thêm/bớt/đảo cột.`,
+            "❌ TIÊU ĐỀ KHÔNG KHỚP", true
+        );
+        return;
+    }
+
+    btn.disabled = false; btn.innerHTML = originalText;
+
     closeImportExcelModal();
-    showConfirm(`Phát hiện ${items.length} hồ sơ trong file (đã tự động bỏ qua dòng mẫu).\n\n👉 Dữ liệu sẽ được chèn THẲNG vào hệ thống, không qua bảng xem trước bên dưới.\n\nBạn có chắc chắn muốn nhập không?`, () => {
-        sendImportItemsToCloud(items);
+    showConfirm(`Phát hiện ${items.length} hồ sơ trong file (tiêu đề đã khớp hệ thống, đã tự động bỏ qua dòng mẫu).\n\n👉 Dữ liệu sẽ được chèn THẲNG vào hệ thống, không qua bảng xem trước bên dưới.\n\nBạn có chắc chắn muốn nhập không?`, () => {
+        sendImportItemsToCloud(fileHeaders, items);
     }, "📂 XÁC NHẬN IMPORT EXCEL");
 }
 
-async function sendImportItemsToCloud(items) {
+async function sendImportItemsToCloud(fileHeaders, items) {
     const sb = document.getElementById('statusBar');
     if (sb) sb.innerText = `⏳ Đang nhập ${items.length} hồ sơ từ file Excel lên hệ thống...`;
 
@@ -841,11 +902,27 @@ async function sendImportItemsToCloud(items) {
             method: "POST",
             headers: { "Content-Type": "text/plain;charset=utf-8" },
             // idToken gửi kèm để Apps Script tự xác minh chữ ký + đối chiếu whitelist — chống giả mạo tài khoản.
-            body: JSON.stringify({ idToken: currentIdToken, items: items })
+            // headers gửi kèm để backend TỰ so khớp lại lần cuối trước khi ghi (phòng trường hợp sheet
+            // trung gian bị đổi cột đúng lúc giữa bước kiểm tra tiêu đề và bước gửi dữ liệu này).
+            body: JSON.stringify({ idToken: currentIdToken, action: "importFromExcel", headers: fileHeaders, items: items })
         });
         const result = await response.json();
         if (result.status === "success") {
+            // Trước đây import Excel chỉ ghi thẳng lên sheet trung gian, KHÔNG hiện trong bảng danh sách
+            // bên dưới. Giờ thêm luôn các hồ sơ vừa import thành công vào danh sách (đánh dấu sẵn
+            // "Uploaded" vì đã đồng bộ xong lên hệ thống, không cần đẩy lại lần nữa).
+            const sttBase = dataList.length;
+            items.forEach((item, idx) => {
+                const importedRow = { ...item };
+                importedRow["STT"] = sttBase + idx + 1;
+                importedRow["TRẠNG THÁI ĐẨY"] = "Uploaded";
+                importedRow["TÀI KHOẢN NHẬP LIỆU"] = currentUserEmail || "(chưa đăng nhập)";
+                dataList.push(importedRow);
+            });
+            renderTable();
             showAlert(`Đã nhập thành công ${items.length} hồ sơ từ file Excel lên hệ thống!`, "🎉 IMPORT THÀNH CÔNG", false);
+        } else if (result.status === "header_mismatch") {
+            showAlert(`Tiêu đề file KHÔNG khớp với hệ thống (phát hiện lại ở bước cuối) — dữ liệu KHÔNG được đẩy lên.\n\n👉 ${result.message || 'Vui lòng tải lại file mẫu mới nhất và thử lại.'}`, "❌ TIÊU ĐỀ KHÔNG KHỚP", true);
         } else {
             showAlert(`Lỗi trả về từ máy chủ Google:\n👉 ${result.message}`, "❌ LỖI MÁY CHỦ", true);
         }
