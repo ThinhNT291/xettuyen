@@ -47,7 +47,8 @@ function restorePendingDataList() {
 // ĐĂNG NHẬP GOOGLE (XÁC THỰC TÀI KHOẢN NHẬP LIỆU)
 // ==========================================
 let currentIdToken = null;   // JWT gốc — gửi lên server để server tự xác minh (chống giả mạo)
-let currentUserEmail = "";   // chỉ dùng để hiển thị, KHÔNG phải nguồn dữ liệu tin cậy
+let currentUserEmail = "";   // dùng làm định danh ghi log/audit, KHÔNG phải nguồn dữ liệu tin cậy
+let currentUserName = "";    // Họ tên hiển thị (lấy từ claim "name" của Google), chỉ để HIỂN THỊ cho đẹp
 let currentTokenExp = 0;     // epoch giây, lấy từ claim "exp" của token
 let isVerifiedByServer = false; // chỉ true sau khi server xác nhận token hợp lệ + email nằm trong whitelist
 
@@ -72,7 +73,7 @@ function updateAccountLabel() {
 
     if (label) {
         if (loggedIn) {
-            label.innerText = `👤 ${currentUserEmail}`;
+            label.innerText = `👤 ${currentUserName || currentUserEmail}`;
             label.style.color = "#2e7d32";
         } else {
             label.innerText = "⚠️ Chưa đăng nhập";
@@ -90,10 +91,12 @@ function updateAccountLabel() {
 function clearLoginState() {
     currentIdToken = null;
     currentUserEmail = "";
+    currentUserName = "";
     currentTokenExp = 0;
     isVerifiedByServer = false;
     sessionStorage.removeItem('gg_id_token');
     sessionStorage.removeItem('gg_user_email');
+    sessionStorage.removeItem('gg_user_name');
     sessionStorage.removeItem('gg_token_exp');
     sessionStorage.removeItem('gg_verified');
 }
@@ -132,6 +135,9 @@ async function handleGoogleLogin(response) {
         const idToken = response.credential;
         const email = payload.email;
         const exp = payload.exp;
+        // Tên hiển thị (First Name Last Name) — ưu tiên claim "name" chuẩn của Google,
+        // dự phòng ghép given_name + family_name, cuối cùng mới rơi về email nếu không có tên.
+        const displayName = payload.name || [payload.given_name, payload.family_name].filter(Boolean).join(" ") || "";
 
         // Trước khi mở khoá bất cứ thứ gì: bắt server xác minh token + whitelist.
         const result = await verifyLoginWithServer(idToken);
@@ -155,11 +161,13 @@ async function handleGoogleLogin(response) {
 
         currentIdToken = idToken;
         currentUserEmail = result.email || email;
+        currentUserName = displayName;
         currentTokenExp = exp;
         isVerifiedByServer = true;
 
         sessionStorage.setItem('gg_id_token', currentIdToken);
         sessionStorage.setItem('gg_user_email', currentUserEmail);
+        sessionStorage.setItem('gg_user_name', currentUserName);
         sessionStorage.setItem('gg_token_exp', String(currentTokenExp));
         sessionStorage.setItem('gg_verified', '1');
         updateAccountLabel();
@@ -180,6 +188,7 @@ window.addEventListener('DOMContentLoaded', () => {
     if (savedToken && savedVerified && savedExp > Date.now() / 1000) {
         currentIdToken = savedToken;
         currentUserEmail = sessionStorage.getItem('gg_user_email') || "";
+        currentUserName = sessionStorage.getItem('gg_user_name') || "";
         currentTokenExp = savedExp;
         isVerifiedByServer = true;
     } else {
@@ -590,7 +599,7 @@ function editRow(index) {
     // Đã đổi ở phần bốc dữ liệu lên form Web1
     setChk('doc_cccd', "BẢN SAO ID"); 
     
-    setChk('doc_khaisinh', "BẢN SAO GIẤY KHAI SINH"); setChk('doc_anhthe', "ẢNH THẺ");
+    setChk('doc_anhthe', "ẢNH THẺ");
     setChk('doc_bang_thpt', "BẢN SAO BẰNG THPT/GIẤY BÁO ĐIỂM"); setChk('doc_hocba_thpt', "BẢN SAO HỌC BẠ THPT"); setChk('doc_bang_tc', "BẢN SAO BẰNG TRUNG CẤP"); setChk('doc_diem_tc', "BẢNG ĐIỂM TRUNG CẤP");
     setChk('doc_ktvh_thpt', "BẰNG THPT/GCN ĐỦ KL KTVH THPT"); setChk('doc_bang_tc_truoc', "BẢN SAO BẰNG TRUNG CẤP TRƯỚC 2022"); setChk('doc_diem_tc_truoc', "BẢNG ĐIỂM TRUNG CẤP TRƯỚC 2022");
     setChk('doc_gcn_gdpt', "GCN HOÀN THÀNH CT GDPT"); setChk('doc_bang_cd', "BẰNG CAO ĐẲNG"); setChk('doc_diem_cd', "BẢNG ĐIỂM CAO ĐẲNG"); setChk('doc_bang_dh', "BẰNG ĐẠI HỌC"); setChk('doc_diem_dh', "BẢNG ĐIỂM ĐẠI HỌC");
@@ -643,7 +652,7 @@ function addRow() {
         "LINK HỒ SƠ": document.getElementById('link_folder').value.trim(),
         
         // ĐÃ ĐỔI NHÃN BẢN SAO ID KHI LƯU VÀO JSON
-        "PHIẾU ĐĂNG KÝ DỰ TUYỂN": getChkVal('doc_phieu_dk'), "SƠ YẾU LÝ LỊCH": getChkVal('doc_syll'), "BẢN SAO ID": getChkVal('doc_cccd'), "BẢN SAO GIẤY KHAI SINH": getChkVal('doc_khaisinh'), "ẢNH THẺ": getChkVal('doc_anhthe'),
+        "PHIẾU ĐĂNG KÝ DỰ TUYỂN": getChkVal('doc_phieu_dk'), "SƠ YẾU LÝ LỊCH": getChkVal('doc_syll'), "BẢN SAO ID": getChkVal('doc_cccd'), "ẢNH THẺ": getChkVal('doc_anhthe'),
         
         "BẢN SAO BẰNG THPT/GIẤY BÁO ĐIỂM": getChkVal('doc_bang_thpt'), "BẢN SAO HỌC BẠ THPT": getChkVal('doc_hocba_thpt'), "BẢN SAO BẰNG TRUNG CẤP": getChkVal('doc_bang_tc'), "BẢNG ĐIỂM TRUNG CẤP": getChkVal('doc_diem_tc'),
         "BẰNG THPT/GCN ĐỦ KL KTVH THPT": getChkVal('doc_ktvh_thpt'), "BẢN SAO BẰNG TRUNG CẤP TRƯỚC 2022": getChkVal('doc_bang_tc_truoc'), "BẢNG ĐIỂM TRUNG CẤP TRƯỚC 2022": getChkVal('doc_diem_tc_truoc'),
@@ -678,7 +687,7 @@ function renderTable() {
         
         // Đã cập nhật BẢN SAO ID vào bảng preview của Web1
         tr.innerHTML = `<td>${row["STT"]}</td><td class="${isUp ? 'status-done' : 'status-pending'}">${row["TRẠNG THÁI ĐẨY"]}</td><td><b>${actionText}${row["CĂN CƯỚC"] || row["SỐ CCCD"]}</b></td><td>${row["TÊN SINH VIÊN"]}</td><td>${row["NGÀY SINH"]}</td><td>${row["NGÀNH"]}</td><td>${row["KHÓA"]}</td><td>${row["ĐỐI TƯỢNG ƯU TIÊN"]}</td><td>${row["KHU VỰC ƯU TIÊN"]}</td><td>${row["ĐỐI TƯỢNG ĐẦU VÀO"]}</td><td>${row["NĂM XÉT TUYỂN"]}</td><td>${row["HỆ ĐÀO TẠO"]}</td><td>${row["HÌNH THỨC ĐÀO TẠO"]}</td>
-            ${fmtLink(row["LINK HỒ SƠ"])}${fmtTick(row["PHIẾU ĐĂNG KÝ DỰ TUYỂN"])}${fmtTick(row["SƠ YẾU LÝ LỊCH"])}${fmtTick(row["BẢN SAO ID"])}${fmtTick(row["BẢN SAO GIẤY KHAI SINH"])}${fmtTick(row["ẢNH THẺ"])}${fmtTick(row["BẢN SAO BẰNG THPT/GIẤY BÁO ĐIỂM"])}${fmtTick(row["BẢN SAO HỌC BẠ THPT"])}${fmtTick(row["BẢN SAO BẰNG TRUNG CẤP"])}${fmtTick(row["BẢNG ĐIỂM TRUNG CẤP"])}${fmtTick(row["BẰNG THPT/GCN ĐỦ KL KTVH THPT"])}${fmtTick(row["BẢN SAO BẰNG TRUNG CẤP TRƯỚC 2022"])}${fmtTick(row["BẢNG ĐIỂM TRUNG CẤP TRƯỚC 2022"])}${fmtTick(row["GCN HOÀN THÀNH CT GDPT"])}${fmtTick(row["BẰNG CAO ĐẲNG"])}${fmtTick(row["BẢNG ĐIỂM CAO ĐẲNG"])}${fmtTick(row["BẰNG ĐẠI HỌC"])}${fmtTick(row["BẢNG ĐIỂM ĐẠI HỌC"])}
+            ${fmtLink(row["LINK HỒ SƠ"])}${fmtTick(row["PHIẾU ĐĂNG KÝ DỰ TUYỂN"])}${fmtTick(row["SƠ YẾU LÝ LỊCH"])}${fmtTick(row["BẢN SAO ID"])}${fmtTick(row["ẢNH THẺ"])}${fmtTick(row["BẢN SAO BẰNG THPT/GIẤY BÁO ĐIỂM"])}${fmtTick(row["BẢN SAO HỌC BẠ THPT"])}${fmtTick(row["BẢN SAO BẰNG TRUNG CẤP"])}${fmtTick(row["BẢNG ĐIỂM TRUNG CẤP"])}${fmtTick(row["BẰNG THPT/GCN ĐỦ KL KTVH THPT"])}${fmtTick(row["BẢN SAO BẰNG TRUNG CẤP TRƯỚC 2022"])}${fmtTick(row["BẢNG ĐIỂM TRUNG CẤP TRƯỚC 2022"])}${fmtTick(row["GCN HOÀN THÀNH CT GDPT"])}${fmtTick(row["BẰNG CAO ĐẲNG"])}${fmtTick(row["BẢNG ĐIỂM CAO ĐẲNG"])}${fmtTick(row["BẰNG ĐẠI HỌC"])}${fmtTick(row["BẢNG ĐIỂM ĐẠI HỌC"])}
             <td>${row["GIẤY TỜ ƯU TIÊN"]}</td><td>${row["TOÁN"]}</td><td>${row["VẬT LÍ"]}</td><td>${row["HÓA HỌC"]}</td><td>${row["SINH HỌC"]}</td><td>${row["NGỮ VĂN"]}</td><td>${row["LỊCH SỬ"]}</td><td>${row["ĐỊA LÝ"]}</td><td>${row["TIẾNG ANH"]}</td><td>${row["TIẾNG TRUNG"]}</td><td>${row["TIN HỌC"]}</td><td>${row["GDKTPL"]}</td><td><b>${row["ĐIỂM TB TOÀN KHÓA HỆ 4"]}</b></td><td><b>${row["ĐIỂM TB TOÀN KHÓA HỆ 10"]}</b></td><td><b style="color:#d32f2f">${row["ĐIỂM CỘNG"]}</b></td>
             <td>${!isUp ? `<div style="display:flex;"><button class="btn-edit-row" onclick="editRow(${index})" ${editingIndex !== -1 ? 'disabled style="opacity:0.5; cursor:not-allowed;"' : ''}>✏️</button><button class="btn-delete-row" onclick="deleteRow(${index})" ${editingIndex !== -1 ? 'disabled style="opacity:0.5; cursor:not-allowed;"' : ''}>🗑️</button></div>` : ''}</td>`;
         tbody.appendChild(tr);
@@ -697,6 +706,155 @@ function exportToExcel() {
     const worksheet = XLSX.utils.json_to_sheet(dataList.map(row => ({...row})));
     const workbook = XLSX.utils.book_new(); XLSX.utils.book_append_sheet(workbook, worksheet, "DuLieuNhap");
     XLSX.writeFile(workbook, `Du_Lieu_Nhap_${new Date().toISOString().slice(0,10)}.xlsx`);
+}
+
+// ==========================================
+// IMPORT TỪ EXCEL — đọc file (.xlsx/.xls/.csv), bỏ dòng mẫu, chèn thẳng vào sheet trung gian
+// qua đúng API WEB_APP_URL (doPost của trunggian.gs) — cùng cơ chế với nút "Đẩy dữ liệu lên hệ thống".
+// Backend tự match tiêu đề, tự chèn STT/TIME (nếu thiếu) và luôn tự chèn TÀI KHOẢN NHẬP LIỆU theo
+// email đã xác thực server-side — nên ở đây KHÔNG gửi 3 cột đó lên, để backend tự lo.
+// ==========================================
+let importSelectedFile = null;
+const IMPORT_EXCLUDE_COLS = ["STT", "TIME", "TÀI KHOẢN NHẬP LIỆU", "TRẠNG THÁI ĐẨY"];
+
+function openImportExcelModal() {
+    importSelectedFile = null;
+    const nameBox = document.getElementById('importFileNameBox');
+    nameBox.textContent = "Chọn file dữ liệu...";
+    nameBox.style.color = "#888888";
+
+    const btn = document.getElementById('btnImportAction');
+    btn.disabled = false;
+    btn.innerHTML = "📁 Choose file";
+    btn.onclick = () => document.getElementById('importExcelFileInput').click();
+
+    document.getElementById('importExcelFileInput').value = "";
+    document.getElementById('importExcelModal').style.display = 'flex';
+}
+
+function closeImportExcelModal() {
+    document.getElementById('importExcelModal').style.display = 'none';
+}
+
+function onImportFileChosen(input) {
+    const file = input.files[0];
+    if (!file) return;
+    importSelectedFile = file;
+
+    const nameBox = document.getElementById('importFileNameBox');
+    nameBox.textContent = file.name;
+    nameBox.style.color = "#333333";
+
+    const btn = document.getElementById('btnImportAction');
+    btn.disabled = false;
+    btn.innerHTML = "⬆️ Upload";
+    btn.onclick = () => executeImportExcelUpload();
+}
+
+// Đọc file bằng SheetJS (xử lý được cả .xlsx/.xls lẫn .csv chuẩn qua cùng 1 API).
+// Trả về mảng object: key = đúng tên tiêu đề cột trong file (đã trim) để backend tự match theo tên.
+function parseExcelFileToItems(file) {
+    return new Promise((resolve, reject) => {
+        const reader = new FileReader();
+        reader.onload = function (e) {
+            try {
+                const data = new Uint8Array(e.target.result);
+                const workbook = XLSX.read(data, { type: 'array' });
+                const sheet = workbook.Sheets[workbook.SheetNames[0]];
+                // header:1 -> lấy nguyên mảng theo hàng, tự kiểm soát việc bỏ dòng mẫu.
+                const rows = XLSX.utils.sheet_to_json(sheet, { header: 1, defval: "", raw: false });
+
+                if (!rows || rows.length === 0) { reject("File rỗng, không đọc được dữ liệu nào."); return; }
+
+                const rawHeaders = rows[0].map(h => String(h || "").trim());
+                if (rawHeaders.every(h => h === "")) { reject("Không đọc được dòng tiêu đề trong file."); return; }
+
+                // Dòng ngay sau tiêu đề (rows[1]) = dòng mẫu/hướng dẫn -> luôn bỏ qua, không nhập.
+                const dataRows = rows.slice(2);
+                const items = [];
+
+                dataRows.forEach(rowArr => {
+                    const isEmptyRow = rowArr.every(cell => String(cell || "").trim() === "");
+                    if (isEmptyRow) return; // bỏ qua dòng trống thừa ở cuối file
+
+                    const obj = {};
+                    rawHeaders.forEach((h, idx) => {
+                        if (!h) return; // cột không có tiêu đề -> bỏ qua
+                        const cleanH = h.toUpperCase().replace(/\s+/g, ' ').trim();
+                        if (IMPORT_EXCLUDE_COLS.indexOf(cleanH) !== -1) return; // để backend tự chèn
+                        const val = rowArr[idx];
+                        obj[h] = (val === undefined || val === null) ? "" : val;
+                    });
+                    items.push(obj);
+                });
+
+                resolve(items);
+            } catch (err) {
+                reject("Không đọc được nội dung file (có thể sai định dạng): " + err);
+            }
+        };
+        reader.onerror = function () { reject("Không đọc được file, vui lòng thử chọn lại."); };
+        reader.readAsArrayBuffer(file);
+    });
+}
+
+async function executeImportExcelUpload() {
+    if (!importSelectedFile) return;
+
+    if (!isLoggedIn()) {
+        showAlert("Bạn chưa đăng nhập Google hoặc phiên đăng nhập đã hết hạn (token sống khoảng 1 giờ).\n\n👉 Vui lòng bấm nút đăng nhập Google ở đầu trang rồi thử lại.", "🔒 CẦN ĐĂNG NHẬP", true);
+        return;
+    }
+
+    const btn = document.getElementById('btnImportAction');
+    const originalText = btn.innerHTML;
+    btn.disabled = true; btn.innerHTML = "⏳ Đang đọc file...";
+
+    let items;
+    try {
+        items = await parseExcelFileToItems(importSelectedFile);
+    } catch (err) {
+        showAlert(String(err), "❌ LỖI ĐỌC FILE", true);
+        btn.disabled = false; btn.innerHTML = originalText;
+        return;
+    }
+
+    btn.disabled = false; btn.innerHTML = originalText;
+
+    if (items.length === 0) {
+        showAlert("Không tìm thấy hồ sơ nào để nhập trong file (đã bỏ qua dòng tiêu đề, dòng mẫu và các dòng trống).", "⚠️ KHÔNG CÓ DỮ LIỆU", true);
+        return;
+    }
+
+    closeImportExcelModal();
+    showConfirm(`Phát hiện ${items.length} hồ sơ trong file (đã tự động bỏ qua dòng mẫu).\n\n👉 Dữ liệu sẽ được chèn THẲNG vào hệ thống, không qua bảng xem trước bên dưới.\n\nBạn có chắc chắn muốn nhập không?`, () => {
+        sendImportItemsToCloud(items);
+    }, "📂 XÁC NHẬN IMPORT EXCEL");
+}
+
+async function sendImportItemsToCloud(items) {
+    const sb = document.getElementById('statusBar');
+    if (sb) sb.innerText = `⏳ Đang nhập ${items.length} hồ sơ từ file Excel lên hệ thống...`;
+
+    try {
+        const response = await fetch(WEB_APP_URL, {
+            method: "POST",
+            headers: { "Content-Type": "text/plain;charset=utf-8" },
+            // idToken gửi kèm để Apps Script tự xác minh chữ ký + đối chiếu whitelist — chống giả mạo tài khoản.
+            body: JSON.stringify({ idToken: currentIdToken, items: items })
+        });
+        const result = await response.json();
+        if (result.status === "success") {
+            showAlert(`Đã nhập thành công ${items.length} hồ sơ từ file Excel lên hệ thống!`, "🎉 IMPORT THÀNH CÔNG", false);
+        } else {
+            showAlert(`Lỗi trả về từ máy chủ Google:\n👉 ${result.message}`, "❌ LỖI MÁY CHỦ", true);
+        }
+    } catch (error) {
+        showAlert(`Không thể kết nối đến máy chủ. Vui lòng kiểm tra lại kết nối mạng của bạn!\n\n👉 Chi tiết lỗi: ${error}`, "❌ LỖI KẾT NỐI MẠNG", true);
+    } finally {
+        const pendingCount = dataList.filter(r => r["TRẠNG THÁI ĐẨY"] === "Waiting").length;
+        if (sb) sb.innerText = `Tổng số ${dataList.length} hồ sơ (Đang có ${pendingCount} hồ sơ chưa đồng bộ).`;
+    }
 }
 
 function clearTable() { 
@@ -811,7 +969,7 @@ async function executeSearchCandidate() {
     try {
         const resp = await fetch(API_CHECK_ID, {
             method: "POST", headers: { "Content-Type": "text/plain;charset=utf-8" },
-            body: JSON.stringify({ keyword: keyword })
+            body: JSON.stringify({ keyword: keyword, idToken: currentIdToken })
         });
         
         const result = await resp.json();
@@ -1021,7 +1179,6 @@ function fillFormWithData(rowData) {
     // Đã thay CĂN CƯỚC bằng BẢN SAO ID vào hàng đợi ưu tiên cao nhất
     setChk('doc_cccd', "BẢN SAO ID", "BẢN SAO CCCD"); 
     
-    setChk('doc_khaisinh', "BẢN SAO GIẤY KHAI SINH", "KHAI SINH"); 
     setChk('doc_anhthe', "ẢNH THẺ");
     setChk('doc_bang_thpt', "BẢN SAO BẰNG THPT/GIẤY BÁO ĐIỂM", "BẰNG THPT"); 
     setChk('doc_hocba_thpt', "BẢN SAO HỌC BẠ THPT", "HỌC BẠ THPT"); 
@@ -1058,22 +1215,21 @@ function fillFormWithData(rowData) {
 // ==========================================
 window.addEventListener('keydown', function(event) {
     if (event.key === "Escape") {
-        // Đóng hộp thoại tra cứu mã trường/khu vực
-        const lookupModal = document.getElementById('lookupModal');
-        if (lookupModal && lookupModal.style.display === 'flex') {
-            closeLookupModal();
-        }
-        
-        // Đóng hộp thoại cảnh báo/xác nhận chung
-        const customModal = document.getElementById('customModal');
+        // Đóng đúng lớp modal đang hiển thị TRÊN CÙNG (theo z-index giảm dần) — mỗi lần ESC chỉ đóng 1 lớp,
+        // tránh trường hợp đóng chồng nhiều modal cùng lúc (vd: customModal báo lỗi mở đè lên importExcelModal).
+        const customModal = document.getElementById('customModal');           // z-index 10050
+        const importExcelModal = document.getElementById('importExcelModal'); // z-index 10010
+        const searchCandidateModal = document.getElementById('searchCandidateModal'); // z-index 10000
+        const lookupModal = document.getElementById('lookupModal');           // z-index mặc định (thấp nhất)
+
         if (customModal && customModal.style.display === 'flex') {
             customModal.style.display = 'none';
-        }
-
-        // Đóng hộp thoại tìm kiếm hồ sơ cũ
-        const searchCandidateModal = document.getElementById('searchCandidateModal');
-        if (searchCandidateModal && searchCandidateModal.style.display === 'flex') {
+        } else if (importExcelModal && importExcelModal.style.display === 'flex') {
+            closeImportExcelModal();
+        } else if (searchCandidateModal && searchCandidateModal.style.display === 'flex') {
             closeSearchModal();
+        } else if (lookupModal && lookupModal.style.display === 'flex') {
+            closeLookupModal();
         }
     }
 });
