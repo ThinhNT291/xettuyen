@@ -38,6 +38,28 @@
             #loginGate .gate-box { max-width: 620px; }
             #loginGate .gate-title { font-size: 24px; white-space: nowrap; }
         }
+
+        /* ==========================================================
+           THU GỌN KHUNG "HỒ SƠ CHUNG" / "HỒ SƠ TIÊN QUYẾT":
+           dồn các ô checkbox lên nhiều cột, giảm khoảng trắng thừa xung quanh.
+           Dùng !important để chắc chắn thắng CSS gốc trong style.css.
+           ========================================================== */
+        .doc-common-box, .doc-group { padding: 10px 14px !important; margin-bottom: 10px !important; }
+        .doc-common-header { margin-bottom: 6px !important; }
+        .doc-common-header h4, .doc-group h4 { margin: 0 0 6px 0 !important; }
+        .checkbox-grid {
+            display: grid !important;
+            grid-template-columns: repeat(4, minmax(0, 1fr)) !important;
+            column-gap: 14px !important;
+            row-gap: 4px !important;
+        }
+        .checkbox-item { padding: 2px 0 !important; margin: 0 !important; font-size: 13px !important; }
+        @media (max-width: 900px) {
+            .checkbox-grid { grid-template-columns: repeat(3, minmax(0, 1fr)) !important; }
+        }
+        @media (max-width: 600px) {
+            .checkbox-grid { grid-template-columns: repeat(2, minmax(0, 1fr)) !important; }
+        }
     </style>
 </head>
 <body>
@@ -63,14 +85,12 @@
 </div>
 
 <div class="container" id="mainAppContent" style="display:none;">
-    <h2>📝 CỔNG NHẬP LIỆU HỒ SƠ TUYỂN SINH</h2>
-
-    <!-- ========================================================
-         TRẠNG THÁI ĐĂNG NHẬP GOOGLE — HIỂN THỊ TÀI KHOẢN + NÚT ĐĂNG XUẤT
-         ======================================================== -->
-    <div style="display:flex; align-items:center; justify-content:flex-end; gap:12px; flex-wrap:wrap; margin-bottom:12px; padding:8px 10px; background:#f5f5f5; border-radius:6px; border:1px solid #e0e0e0;">
-        <span id="current-account-label" style="font-weight:bold; font-size:13px;"></span>
-        <button type="button" id="btnSignOut" onclick="signOutUser()" style="display:none; background:#c62828; color:#fff; border:none; padding:6px 14px; border-radius:20px; font-size:13px; font-weight:bold; cursor:pointer; box-shadow:0 1px 3px rgba(0,0,0,0.2);">🚪 Đăng xuất</button>
+    <div style="display:flex; align-items:flex-end; justify-content:space-between; flex-wrap:wrap; gap:10px; margin-bottom:12px;">
+        <h2 style="margin:0;">📝 CỔNG NHẬP LIỆU HỒ SƠ TUYỂN SINH</h2>
+        <div style="display:flex; align-items:center; gap:12px; flex-wrap:wrap; padding:8px 10px; background:#f5f5f5; border-radius:6px; border:1px solid #e0e0e0;">
+            <span id="current-account-label" style="font-weight:bold; font-size:13px;"></span>
+            <button type="button" id="btnSignOut" onclick="signOutUser()" style="display:none; background:#c62828; color:#fff; border:none; padding:6px 14px; border-radius:20px; font-size:13px; font-weight:bold; cursor:pointer; box-shadow:0 1px 3px rgba(0,0,0,0.2);">🚪 Đăng xuất</button>
+        </div>
     </div>
     
 <div class="section-title">I. THÔNG TIN CHUNG</div>
@@ -211,7 +231,6 @@
             <label class="checkbox-item"><input type="checkbox" id="doc_phieu_dk" class="doc-chk-common"><span style="color: #d32f2f; font-weight: bold;">PHIẾU ĐĂNG KÝ DỰ TUYỂN</span></label>
             <label class="checkbox-item"><input type="checkbox" id="doc_syll" class="doc-chk-common"><span>SƠ YẾU LÝ LỊCH</span></label>
             <label class="checkbox-item"><input type="checkbox" id="doc_cccd" class="doc-chk-common"><span>BẢN SAO CCCD</span></label>
-            <label class="checkbox-item"><input type="checkbox" id="doc_khaisinh" class="doc-chk-common"><span>BẢN SAO GIẤY KHAI SINH</span></label>
             <label class="checkbox-item"><input type="checkbox" id="doc_anhthe" class="doc-chk-common"><span>ẢNH THẺ</span></label>
         </div>
     </div>
@@ -220,7 +239,7 @@
         <div id="doc-placeholder" class="doc-placeholder">👈 Chọn "Đối tượng đầu vào" trước</div>
 
         <div id="group-thpt" class="doc-group">
-            <h4>📁 Hồ sơ áp dụng cho: Tốt nghiệp THPT</h4>
+            <h4>📁 Hồ sơ tiên quyết</h4>
             <div class="checkbox-grid">
                 <label class="checkbox-item"><input type="checkbox" id="doc_bang_thpt" class="doc-chk-dynamic"><span>BẢN SAO BẰNG THPT/GIẤY BÁO ĐIỂM</span></label>
                 <label class="checkbox-item"><input type="checkbox" id="doc_hocba_thpt" class="doc-chk-dynamic"><span>BẢN SAO HỌC BẠ THPT</span></label>
@@ -228,7 +247,7 @@
         </div>
 
         <div id="group-tc-sau2022" class="doc-group">
-            <h4>📁 Hồ sơ áp dụng cho: Tốt nghiệp Trung cấp sau 2022</h4>
+            <h4>📁 Hồ sơ tiên quyết</h4>
             <div class="checkbox-grid">
                 <label class="checkbox-item"><input type="checkbox" id="doc_bang_tc" class="doc-chk-dynamic"><span>BẢN SAO BẰNG TRUNG CẤP</span></label>
                 <label class="checkbox-item"><input type="checkbox" id="doc_diem_tc" class="doc-chk-dynamic"><span>BẢNG ĐIỂM TRUNG CẤP</span></label>
@@ -237,7 +256,7 @@
         </div>
 
         <div id="group-tc-truoc2022" class="doc-group">
-            <h4>📁 Hồ sơ áp dụng cho: Tốt nghiệp Trung cấp trước 2022 / Trung học nghề</h4>
+            <h4>📁 Hồ sơ tiên quyết</h4>
             <div class="checkbox-grid">
                 <label class="checkbox-item"><input type="checkbox" id="doc_bang_tc_truoc" class="doc-chk-dynamic"><span>BẢN SAO BẰNG TRUNG CẤP TRƯỚC 2022</span></label>
                 <label class="checkbox-item"><input type="checkbox" id="doc_diem_tc_truoc" class="doc-chk-dynamic"><span>BẢNG ĐIỂM TRUNG CẤP TRƯỚC 2022</span></label>
@@ -246,7 +265,7 @@
         </div>
 
         <div id="group-caodang" class="doc-group">
-            <h4>📁 Hồ sơ áp dụng cho: Tốt nghiệp Cao đẳng</h4>
+            <h4>📁 Hồ sơ tiên quyết</h4>
             <div class="checkbox-grid">
                 <label class="checkbox-item"><input type="checkbox" id="doc_bang_cd" class="doc-chk-dynamic"><span>BẰNG CAO ĐẲNG</span></label>
                 <label class="checkbox-item"><input type="checkbox" id="doc_diem_cd" class="doc-chk-dynamic"><span>BẢNG ĐIỂM CAO ĐẲNG</span></label>
@@ -254,7 +273,7 @@
         </div>
 
         <div id="group-daihoc" class="doc-group">
-            <h4>📁 Hồ sơ áp dụng cho: Tốt nghiệp Đại học</h4>
+            <h4>📁 Hồ sơ tiên quyết</h4>
             <div class="checkbox-grid">
                 <label class="checkbox-item"><input type="checkbox" id="doc_bang_dh" class="doc-chk-dynamic"><span>BẰNG ĐẠI HỌC</span></label>
                 <label class="checkbox-item"><input type="checkbox" id="doc_diem_dh" class="doc-chk-dynamic"><span>BẢNG ĐIỂM ĐẠI HỌC</span></label>
@@ -343,7 +362,6 @@
                     <th>PHIẾU ĐĂNG KÝ</th>
                     <th>SƠ YẾU LÝ LỊCH</th>
                     <th>BẢN SAO CCCD</th>
-                    <th>GIẤY KHAI SINH</th>
                     <th>ẢNH THẺ</th>
                     <th>BẰNG THPT</th>
                     <th>HỌC BẠ THPT</th>
@@ -381,6 +399,7 @@
     
     <div class="btn-group btn-bottom">
         <button class="btn-clear" onclick="clearTable()">🗑️ Xóa và nhập lại</button>
+        <button class="btn-export" style="background:#7b1fa2; border-color:#6a1b9a;" onclick="openImportExcelModal()">📂 Import từ Excel</button>
         <button class="btn-export" onclick="exportToExcel()">📥 Xuất file Excel</button>
         <button class="btn-push" id="btnPush" onclick="sendToCloud()">☁️ Đẩy dữ liệu lên hệ thống</button>
     </div>
@@ -438,6 +457,27 @@
             <b style="color:#d32f2f; font-size: 13px;">Lưu ý:</b>
             <span style="font-size: 12px; color: #444;">- <b>HS Đã duyệt:</b> Chỉ được tích Bổ sung thêm hồ sơ (Không được sửa Thông tin, Ngành, Điểm).</span>
             <span style="font-size: 12px; color: #444;">- <b>HS Chờ duyệt:</b> Được sửa toàn bộ thông tin <b>NGOẠI TRỪ NGÀNH HỌC</b>.</span>
+        </div>
+    </div>
+</div>
+
+<!-- KHUNG MODAL IMPORT DỮ LIỆU TỪ EXCEL -->
+<div id="importExcelModal" class="modal-overlay" style="display:none; z-index: 10010;">
+    <div class="modal-box" style="max-width: 480px;">
+        <div class="modal-header info">
+            <span>📂</span> IMPORT DỮ LIỆU TỪ EXCEL
+            <span style="margin-left:auto; cursor:pointer; font-size:18px; color:#ffeb3b;" onclick="closeImportExcelModal()">✖</span>
+        </div>
+        <div class="modal-body">
+            <a href="https://docs.google.com/spreadsheets/d/12_pZDTRZXwCqX8kf72Uq7VWN3GGcHlVIFdDMDIlbBHE/edit?gid=0#gid=0" target="_blank" rel="noopener" class="btn-template-download">⬇️ Tải file mẫu</a>
+
+            <div class="import-file-row">
+                <div id="importFileNameBox" class="import-file-namebox">Chọn file dữ liệu...</div>
+                <button id="btnImportAction" class="btn-import-action" type="button">📁 Choose file</button>
+            </div>
+            <input type="file" id="importExcelFileInput" accept=".xlsx,.xls,.csv" style="display:none;" onchange="onImportFileChosen(this)">
+
+            <div class="import-hint">Chấp nhận file Excel (.xlsx, .xls) hoặc CSV chuẩn, đúng cấu trúc tiêu đề của file mẫu. Dòng đầu tiên ngay sau tiêu đề được coi là <b>dòng mẫu/hướng dẫn</b> và sẽ tự động bị bỏ qua, không nhập vào hệ thống.</div>
         </div>
     </div>
 </div>
