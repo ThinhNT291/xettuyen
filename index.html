@@ -60,6 +60,40 @@
         @media (max-width: 600px) {
             .checkbox-grid { grid-template-columns: repeat(2, minmax(0, 1fr)) !important; }
         }
+
+        /* ==========================================================
+           MENU TÀI KHOẢN DẠNG DROPDOWN (bấm vào tên -> xổ ra "Đăng xuất")
+           Nút #btnSignOut cũ được GIỮ NGUYÊN trong DOM (để app.js hiện
+           tại — nếu còn dòng btnSignOut.style.display=... — không bị lỗi
+           "Cannot set properties of null") nhưng ẩn vĩnh viễn bằng
+           !important nên không hiển thị nữa.
+           ========================================================== */
+        #btnSignOut { display: none !important; }
+        .account-menu { position: relative; }
+        .account-menu:has(#current-account-label:empty) { display: none; } /* chưa đăng nhập thì ẩn cả cụm */
+        .account-menu-trigger {
+            display: flex; align-items: center; gap: 6px;
+            background: #fff; border: 1px solid #ddd; border-radius: 20px;
+            padding: 6px 14px; font-size: 13px; font-weight: bold;
+            cursor: pointer; color: inherit;
+        }
+        .account-menu-trigger:hover { background: #f0f0f0; }
+        .account-menu-caret { font-size: 10px; color: #888; transition: transform .15s ease; }
+        .account-menu.open .account-menu-caret { transform: rotate(180deg); }
+        .account-menu-dropdown {
+            display: none; position: absolute; right: 0; top: calc(100% + 6px);
+            background: #fff; border: 1px solid #ddd; border-radius: 8px;
+            box-shadow: 0 4px 14px rgba(0,0,0,0.15); min-width: 160px;
+            overflow: hidden; z-index: 50;
+        }
+        .account-menu.open .account-menu-dropdown { display: block; }
+        .account-menu-item {
+            display: block; width: 100%; text-align: left;
+            background: none; border: none; padding: 10px 14px;
+            font-size: 13px; font-weight: bold; color: #c62828;
+            cursor: pointer;
+        }
+        .account-menu-item:hover { background: #fdecea; }
     </style>
 </head>
 <body>
@@ -88,7 +122,16 @@
     <div style="display:flex; align-items:flex-end; justify-content:space-between; flex-wrap:wrap; gap:10px; margin-bottom:12px;">
         <h2 style="margin:0;">📝 CỔNG NHẬP LIỆU HỒ SƠ TUYỂN SINH</h2>
         <div style="display:flex; align-items:center; gap:12px; flex-wrap:wrap; padding:8px 10px; background:#f5f5f5; border-radius:6px; border:1px solid #e0e0e0;">
-            <span id="current-account-label" style="font-weight:bold; font-size:13px;"></span>
+            <div class="account-menu" id="accountMenu">
+                <button type="button" class="account-menu-trigger" onclick="toggleAccountMenu(event)">
+                    <span id="current-account-label"></span>
+                    <span class="account-menu-caret">▾</span>
+                </button>
+                <div class="account-menu-dropdown">
+                    <button type="button" class="account-menu-item" onclick="closeAccountMenuAnd(signOutUser)">🚪 Đăng xuất</button>
+                </div>
+            </div>
+            <!-- Giữ lại để tương thích ngược với app.js hiện tại, đã ẩn vĩnh viễn qua CSS -->
             <button type="button" id="btnSignOut" onclick="signOutUser()" style="display:none; background:#c62828; color:#fff; border:none; padding:6px 14px; border-radius:20px; font-size:13px; font-weight:bold; cursor:pointer; box-shadow:0 1px 3px rgba(0,0,0,0.2);">🚪 Đăng xuất</button>
         </div>
     </div>
@@ -484,5 +527,23 @@
 <!-- GỌI SCRIPT -->
 <script src="data_config.js"></script>
 <script src="app.js"></script>
+<script>
+// Điều khiển đóng/mở menu dropdown tài khoản — tách riêng khỏi app.js
+// để không phụ thuộc / không đụng vào logic đăng nhập-đăng xuất hiện có.
+function toggleAccountMenu(evt) {
+    if (evt) evt.stopPropagation();
+    const menu = document.getElementById('accountMenu');
+    if (menu) menu.classList.toggle('open');
+}
+function closeAccountMenuAnd(fn) {
+    const menu = document.getElementById('accountMenu');
+    if (menu) menu.classList.remove('open');
+    if (typeof fn === 'function') fn();
+}
+document.addEventListener('click', function (e) {
+    const menu = document.getElementById('accountMenu');
+    if (menu && !menu.contains(e.target)) menu.classList.remove('open');
+});
+</script>
 </body>
 </html>
