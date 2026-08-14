@@ -398,8 +398,8 @@
     </div>
     
     <div class="btn-group btn-bottom">
-        <button class="btn-clear" onclick="clearTable()">🗑️ Xóa và nhập lại</button>
         <button class="btn-export" style="background:#7b1fa2; border-color:#6a1b9a;" onclick="openImportExcelModal()">📂 Import từ Excel</button>
+        <button class="btn-clear" onclick="clearTable()">🗑️ Xóa và nhập lại</button>
         <button class="btn-export" onclick="exportToExcel()">📥 Xuất file Excel</button>
         <button class="btn-push" id="btnPush" onclick="sendToCloud()">☁️ Đẩy dữ liệu lên hệ thống</button>
     </div>
@@ -463,21 +463,25 @@
 
 <!-- KHUNG MODAL IMPORT DỮ LIỆU TỪ EXCEL -->
 <div id="importExcelModal" class="modal-overlay" style="display:none; z-index: 10010;">
-    <div class="modal-box" style="max-width: 480px;">
-        <div class="modal-header info">
-            <span>📂</span> IMPORT DỮ LIỆU TỪ EXCEL
-            <span style="margin-left:auto; cursor:pointer; font-size:18px; color:#ffeb3b;" onclick="closeImportExcelModal()">✖</span>
-        </div>
-        <div class="modal-body">
-            <a href="https://docs.google.com/spreadsheets/d/12_pZDTRZXwCqX8kf72Uq7VWN3GGcHlVIFdDMDIlbBHE/edit?gid=0#gid=0" target="_blank" rel="noopener" class="btn-template-download">⬇️ Tải file mẫu</a>
+    <div class="modal-box import-pro-box">
+        <button type="button" class="import-pro-close" onclick="closeImportExcelModal()" title="Đóng" aria-label="Đóng">✖</button>
+        <h2 class="import-pro-title">Import dữ liệu từ Excel</h2>
+        <p class="import-pro-subtitle">Tải lên danh sách hồ sơ theo đúng cấu trúc file mẫu để nhập nhanh vào hệ thống.</p>
 
-            <div class="import-file-row">
-                <div id="importFileNameBox" class="import-file-namebox">Chọn file dữ liệu...</div>
-                <button id="btnImportAction" class="btn-import-action" type="button">📁 Choose file</button>
-            </div>
-            <input type="file" id="importExcelFileInput" accept=".xlsx,.xls,.csv" style="display:none;" onchange="onImportFileChosen(this)">
+        <button type="button" id="btnImportAction" class="import-pro-dropzone">
+            <span class="import-pro-dropzone-icon">📊</span>
+            <span class="import-pro-dropzone-text">
+                <b>Tải lên từ thiết bị</b>
+                <span id="importFileNameBox">Chọn file Excel (.xlsx, .xls) hoặc CSV từ máy của bạn</span>
+            </span>
+        </button>
+        <input type="file" id="importExcelFileInput" accept=".xlsx,.xls,.csv" style="display:none;" onchange="onImportFileChosen(this)">
 
-            <div class="import-hint">Chấp nhận file Excel (.xlsx, .xls) hoặc CSV chuẩn, đúng cấu trúc tiêu đề của file mẫu. Dòng đầu tiên ngay sau tiêu đề được coi là <b>dòng mẫu/hướng dẫn</b> và sẽ tự động bị bỏ qua, không nhập vào hệ thống.</div>
+        <div class="import-pro-hint">Dòng đầu tiên ngay sau tiêu đề được coi là <b>dòng mẫu/hướng dẫn</b> và sẽ tự động bị bỏ qua, không nhập vào hệ thống.</div>
+
+        <div class="import-pro-footer">
+            <span class="import-pro-limit">Đúng cấu trúc tiêu đề file mẫu</span>
+            <a href="https://docs.google.com/spreadsheets/d/12_pZDTRZXwCqX8kf72Uq7VWN3GGcHlVIFdDMDIlbBHE/edit?gid=0#gid=0" target="_blank" rel="noopener" class="import-pro-template-link">⬇️ Tải file mẫu</a>
         </div>
     </div>
 </div>
