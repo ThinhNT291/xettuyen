@@ -1057,40 +1057,8 @@ function renderTable() {
 // ==========================================
 function ensureHoSoDetailModal() {
     if (document.getElementById('hoSoDetailModal')) return;
-
-    if (!document.getElementById('hoSoDetailStyle')) {
-        const style = document.createElement('style');
-        style.id = 'hoSoDetailStyle';
-        style.textContent = `
-#hoSoDetailModal { display:none; position:fixed; top:0; left:0; width:100%; height:100%;
-    background:rgba(0,0,0,0.35); z-index:10020; align-items:center; justify-content:center; }
-#hoSoDetailModal .hs-box { background:#fdfdfb; color:#222; width:min(660px, 94vw); max-height:88vh;
-    overflow-y:auto; border-radius:6px; border:1px solid #ccc; box-shadow:0 4px 18px rgba(0,0,0,0.25); }
-#hoSoDetailModal .hs-header { display:flex; justify-content:space-between; align-items:center;
-    background:#f0f0ec; color:#222; padding:12px 16px; border-bottom:1px solid #ddd;
-    border-radius:6px 6px 0 0; position:sticky; top:0; }
-#hoSoDetailModal .hs-header b { font-size:15px; }
-#hoSoDetailModal .hs-close-x { cursor:pointer; font-size:18px; color:#555; background:none; border:none; line-height:1; }
-#hoSoDetailModal .hs-body { padding:12px 16px; font-size:12.5px; }
-#hoSoDetailModal .hs-section-title { font-weight:bold; margin:12px 0 5px; color:#333; }
-#hoSoDetailModal .hs-section-title:first-child { margin-top:0; }
-#hoSoDetailModal .hs-table-wrap { display:flex; justify-content:center; width:100%; overflow-x:auto; }
-#hoSoDetailModal table.hs-table { width:auto; min-width:0; max-width:100%; table-layout:fixed; border-collapse:collapse; background:#fafaf8; margin:0 auto; }
-#hoSoDetailModal table.hs-table th, #hoSoDetailModal table.hs-table td { border:1px solid #ddd; padding:4px 9px; text-align:left; vertical-align:top; font-size:12.5px; word-break:break-word; overflow-wrap:break-word; }
-#hoSoDetailModal table.hs-table th { background:#f2f2ee; font-weight:600; color:#333; white-space:normal; width:118px; }
-#hoSoDetailModal table.hs-table td { width:172px; }
-#hoSoDetailModal table.hs-table td.hs-tick-true { text-align:center; color:#222; font-weight:bold; }
-#hoSoDetailModal table.hs-table td.hs-tick-false { text-align:center; color:#666; }
-#hoSoDetailModal .hs-footer { display:flex; justify-content:flex-end; gap:8px; padding:12px 16px;
-    border-top:1px solid #ddd; background:#f7f7f4; border-radius:0 0 6px 6px; position:sticky; bottom:0; }
-#hoSoDetailModal .hs-btn { padding:7px 14px; border-radius:4px; border:1px solid #bbb; background:#fff; color:#222; cursor:pointer; font-size:13px; }
-#hoSoDetailModal .hs-btn:hover { background:#eee; }
-#hoSoDetailModal .hs-btn:disabled { opacity:0.5; cursor:not-allowed; }
-#hoSoDetailModal .hs-btn-danger { border-color:#c9a0a0; }
-#hoSoDetailModal .hs-note { color:#777; font-style:italic; font-size:12px; }
-`;
-        document.head.appendChild(style);
-    }
+    // CSS cho #hoSoDetailModal giờ nằm tĩnh trong style.css (mục "MODAL CHI TIẾT HỒ SƠ") —
+    // không còn tự chèn <style> qua JS ở đây nữa như bản cũ.
 
     const modal = document.createElement('div');
     modal.id = 'hoSoDetailModal';
