@@ -1230,7 +1230,7 @@ function openHoSoDetailModal(index) {
 }
 
 function exportToExcel() {
-    if (dataList.length === 0) { showAlert("Danh sách hồ sơ hiện tại đang trống. Vui lòng nhập dữ liệu trước khi xuất!", "⚠️ KHÔNG CÓ DỮ LIỆU", true); return; }
+    if (dataList.length === 0) { showAlert("Chưa có dữ liệu để xuất file !", "⚠️ KHÔNG CÓ DỮ LIỆU", true); return; }
     const worksheet = XLSX.utils.json_to_sheet(dataList.map(row => ({...row})));
     const workbook = XLSX.utils.book_new(); XLSX.utils.book_append_sheet(workbook, worksheet, "DuLieuNhap");
     XLSX.writeFile(workbook, `Du_Lieu_Nhap_${new Date().toISOString().slice(0,10)}.xlsx`);
@@ -1397,7 +1397,7 @@ async function executeImportExcelUpload() {
     if (!importSelectedFile) return;
 
     if (!isLoggedIn()) {
-        showAlert("Bạn chưa đăng nhập Google hoặc phiên đăng nhập đã hết hạn (token sống khoảng 1 giờ).\n\n👉 Vui lòng bấm nút đăng nhập Google ở đầu trang rồi thử lại.", "🔒 CẦN ĐĂNG NHẬP", true);
+        showAlert("Bạn chưa đăng nhập Google hoặc phiên làm việc đã quá hạn.\n\n👉 Vui lòng đăng nhập rồi thử lại.", "🔒 CẦN ĐĂNG NHẬP", true);
         return;
     }
 
@@ -1418,20 +1418,20 @@ async function executeImportExcelUpload() {
 
     if (items.length === 0) {
         btn.disabled = false; btn.innerHTML = originalText;
-        showAlert("Không tìm thấy hồ sơ nào để nhập trong file (đã bỏ qua dòng tiêu đề, dòng mẫu và các dòng trống).", "⚠️ KHÔNG CÓ DỮ LIỆU", true);
+        showAlert("File không có dữ liệu.", "⚠️ KHÔNG CÓ DỮ LIỆU", true);
         return;
     }
 
     // Tiêu đề trong file phải khớp TÊN với cột thật trên sheet trung gian (không cần đủ hết mọi cột,
     // không cần đúng thứ tự) — cột nào không khớp tên nào cả thì báo lỗi rõ ràng và DỪNG LẠI NGAY,
     // không cho đẩy dữ liệu lên.
-    btn.innerHTML = "⏳ Đang kiểm tra tiêu đề...";
+    btn.innerHTML = "⏳ Đang xử lý...";
     let expectedHeaders;
     try {
         expectedHeaders = await fetchIntermediateSheetHeader();
     } catch (err) {
         btn.disabled = false; btn.innerHTML = originalText;
-        showAlert(`Không kiểm tra được tiêu đề file với hệ thống, dữ liệu CHƯA được đẩy lên.\n\n👉 Chi tiết lỗi: ${err}`, "❌ LỖI KIỂM TRA TIÊU ĐỀ", true);
+        showAlert(`Cấu trúc file mẫu không đúng, dữ liệu CHƯA được đẩy lên. Tải lại file mẫu và chuyển dữ liệu sang.\n\n👉 Chi tiết lỗi: ${err}`, "❌ LỖI CẤU TRÚC FILE MẪU", true);
         return;
     }
 
@@ -1488,7 +1488,7 @@ function addImportedItemsToLocalList(items) {
 
     if (uniqueItems.length === 0) {
         showAlert(
-            `Toàn bộ ${items.length} hồ sơ trong file đã có sẵn trong danh sách hiện tại. Sử dụng chức năng <b>Sửa</b> để cập nhật thông tin — không có hồ sơ mới nào được thêm.`,
+            `Toàn bộ ${items.length} hồ sơ trong file đã có sẵn trong danh sách hiện tại. Sử dụng chức năng Sửa để cập nhật thông tin — không có hồ sơ mới nào được thêm.`,
             "⚠️ TOÀN BỘ ĐÃ TRÙNG", true
         );
         return;
@@ -1512,7 +1512,7 @@ function addImportedItemsToLocalList(items) {
 
     let msg = `Đã nạp ${uniqueItems.length} hồ sơ từ file Excel vào danh sách bên dưới.`;
     if (duplicateInfo.length > 0) {
-        msg += `\n\n⚠️ Đã bỏ qua ${duplicateInfo.length} hồ sơ trùng CĂN CƯỚC + NGÀNH với dữ liệu đang có, Sử dụng chức năng <b>Sửa</b> để cập nhật thông tin:\n` +
+        msg += `\n\n⚠️ Đã bỏ qua ${duplicateInfo.length} hồ sơ trùng với dữ liệu đang có, Sử dụng chức năng Sửa để cập nhật thông tin:\n` +
             duplicateInfo.slice(0, 10).join('\n') +
             (duplicateInfo.length > 10 ? `\n...và ${duplicateInfo.length - 10} hồ sơ khác` : '');
     }
@@ -1536,11 +1536,69 @@ function getNowTimestampAsText() {
     return `'${pad(now.getDate())}/${pad(now.getMonth()+1)}/${now.getFullYear()} ${pad(now.getHours())}:${pad(now.getMinutes())}:${pad(now.getSeconds())}`;
 }
 
+// Gọi action "checkDuplicates" trên GAS trunggian TRƯỚC khi đẩy — hỏi trước cho từng cặp CĂN CƯỚC+NGÀNH
+// trong pendingList xem đã tồn tại sẵn trên sheet trung gian chưa (exists), hoặc có bị trùng NGAY
+// VỚI NHAU trong chính lượt gửi này không (duplicateInBatch). CHỈ hỏi cho các dòng INSERT — dòng UPDATE
+// (sửa hồ sơ cũ qua "🔍 Tìm hồ sơ cũ") vốn dĩ PHẢI trùng với 1 dòng đã có trên sheet nên không tính là lỗi.
+// Trả về mảng các dòng bị trùng kèm lý do, hoặc null nếu gọi server thất bại (cho phép caller tự quyết định
+// có nên chặn cứng hay chỉ cảnh báo khi không kiểm tra được).
+async function checkDuplicatesBeforePush(pendingList) {
+    const insertRows = pendingList.filter(row => row["_Action"] !== "UPDATE");
+    if (insertRows.length === 0) return { ok: true, duplicates: [] };
+
+    const keys = insertRows.map(row => ({ cccd: row["CĂN CƯỚC"] || row["SỐ CCCD"] || "", nganh: row["NGÀNH"] || "" }));
+
+    try {
+        const resp = await fetch(WEB_APP_URL, {
+            method: "POST",
+            headers: { "Content-Type": "text/plain;charset=utf-8" },
+            body: JSON.stringify({ idToken: currentIdToken, action: "checkDuplicates", keys: keys })
+        });
+        const result = await resp.json();
+        if (result.status !== "success" || !Array.isArray(result.results)) return { ok: false, duplicates: [] };
+
+        const duplicates = [];
+        result.results.forEach((r, idx) => {
+            const rowLabel = insertRows[idx]["TÊN SINH VIÊN"] || r.cccd;
+            if (r.exists) {
+                duplicates.push(`- [${rowLabel}] (CCCD ${r.cccd} - ${r.nganh}) đã TỒN TẠI trên hệ thống${r.ten ? ` (tên đang lưu: ${r.ten})` : ""}${r.trangThai ? `, trạng thái: ${r.trangThai}` : ""}.`);
+            } else if (r.duplicateInBatch) {
+                const otherLabel = insertRows[r.duplicateWithRow] ? (insertRows[r.duplicateWithRow]["TÊN SINH VIÊN"] || "") : "";
+                duplicates.push(`- [${rowLabel}] (CCCD ${r.cccd} - ${r.nganh}) TRÙNG với hồ sơ [${otherLabel}] khác NGAY TRONG danh sách đang chờ đẩy.`);
+            }
+        });
+        return { ok: true, duplicates: duplicates };
+    } catch (e) {
+        return { ok: false, duplicates: [] };
+    }
+}
+
 async function sendToCloud() {
     const pendingList = dataList.filter(row => row["TRẠNG THÁI ĐẨY"] === "Waiting");
     if (pendingList.length === 0) { 
         showAlert("Không có hồ sơ mới nào để đẩy lên hệ thống!\n\n👉 Tất cả dữ liệu hiện tại đều đã được tải lên thành công.", "⚠️ KHÔNG CÓ DỮ LIỆU MỚI", true); 
         return; 
+    }
+
+    const btnPush = document.getElementById('btnPush'); const originalPushText = btnPush.innerHTML;
+    btnPush.disabled = true; btnPush.innerHTML = "⏳ Đang kiểm tra trùng...";
+    const dupCheck = await checkDuplicatesBeforePush(pendingList);
+    btnPush.disabled = false; btnPush.innerHTML = originalPushText;
+
+    if (dupCheck.ok && dupCheck.duplicates.length > 0) {
+        // TRÙNG THẬT SỰ (đã có trên hệ thống, hoặc trùng ngay trong danh sách đang chờ) -> CHẶN CỨNG,
+        // không cho đẩy tiếp. Người dùng phải tự sửa (xoá bớt dòng trùng, hoặc dùng "🔍 Tìm hồ sơ cũ" để UPDATE).
+        showAlert(
+            "Phát hiện hồ sơ TRÙNG, KHÔNG THỂ đẩy lên:\n\n" + dupCheck.duplicates.join('\n') +
+            "\n\n👉 Nếu là hồ sơ nộp bổ sung, hãy dùng chức năng \"🔍 Tìm hồ sơ cũ\" để sửa thay vì thêm mới.",
+            "⛔ TRÙNG DỮ LIỆU", true
+        );
+        return;
+    }
+    if (!dupCheck.ok) {
+        // Không kiểm tra trùng được (mất mạng, server lỗi...) — vẫn cho tiếp tục vì server sẽ tự chặn
+        // trùng ở bước ghi thật (skippedDuplicates), chỉ cảnh báo nhẹ để người dùng biết.
+        console.warn("Không kiểm tra trùng trước được, server sẽ tự chặn trùng khi ghi thật nếu có.");
     }
 
     let warnings = [];
@@ -1572,7 +1630,7 @@ async function sendToCloud() {
 async function executeUploadToCloud(pendingList) {
     // BẮT BUỘC ĐĂNG NHẬP GOOGLE TRƯỚC KHI GHI DỮ LIỆU
     if (!isLoggedIn()) {
-        showAlert("Phiên đăng nhập đã hết hạn.\n\n👉 Vui lòng tải lại trang.", "🔒 CẦN ĐĂNG NHẬP", true);
+        showAlert("Phiên đăng nhập đã quá hạn.\n\n👉 Vui lòng tải lại trang.", "🔒 CẦN ĐĂNG NHẬP", true);
         return;
     }
 
@@ -1598,9 +1656,31 @@ async function executeUploadToCloud(pendingList) {
         });
         const result = await response.json();
         if (result.status === "success") {
-            showAlert(`Đã nạp thành công ${pendingList.length} hồ sơ mới lên hệ thống lúc ${displayTime}!`, "🎉 TRUYỀN DỮ LIỆU THÀNH CÔNG", false, () => {
-                dataList.forEach(row => { if (row["TRẠNG THÁI ĐẨY"] === "Waiting") { row["TRẠNG THÁI ĐẨY"] = "Uploaded"; } }); renderTable();
+            // "skipped": server đã tự chặn các dòng TRÙNG (cùng CĂN CƯỚC+NGÀNH) ngay tại thời điểm ghi thật —
+            // có thể xảy ra dù đã checkDuplicates trước đó (VD: người khác vừa ghi trùng ngay trước khi mình bấm gửi).
+            // Các dòng này KHÔNG được đánh dấu "Uploaded", để người dùng thấy vẫn còn "Waiting" và tự xử lý lại.
+            const skipped = Array.isArray(result.skipped) ? result.skipped : [];
+            const skippedKeys = new Set(skipped.map(s => String(s.cccd || "").replace(/\D/g, '') + "|" + String(s.nganh || "").trim().toLowerCase()));
+
+            let uploadedCount = 0;
+            dataList.forEach(row => {
+                if (row["TRẠNG THÁI ĐẨY"] !== "Waiting") return;
+                const rowKey = String(row["CĂN CƯỚC"] || "").replace(/\D/g, '') + "|" + String(row["NGÀNH"] || "").trim().toLowerCase();
+                if (skippedKeys.has(rowKey)) return; // giữ nguyên "Waiting" — bị server chặn vì trùng
+                row["TRẠNG THÁI ĐẨY"] = "Uploaded";
+                uploadedCount++;
             });
+            renderTable();
+
+            if (skipped.length > 0) {
+                const skippedText = skipped.map(s => `- [${s.ten || s.cccd}] (CCCD ${s.cccd} - ${s.nganh})`).join('\n');
+                showAlert(
+                    `Đã nạp thành công ${uploadedCount} hồ sơ lúc ${displayTime}.\n\n⚠️ ${skipped.length} hồ sơ bị TỪ CHỐI vì TRÙNG Căn cước + Ngành với dữ liệu đã có:\n${skippedText}\n\n👉 Kiểm tra lại, nếu là nộp bổ sung hãy dùng "🔍 Tìm hồ sơ cũ" để sửa.`,
+                    "⚠️ MỘT SỐ HỒ SƠ BỊ TỪ CHỐI", true
+                );
+            } else {
+                showAlert(`Đã nạp thành công ${uploadedCount} hồ sơ mới lên hệ thống lúc ${displayTime}!`, "🎉 TRUYỀN DỮ LIỆU THÀNH CÔNG", false);
+            }
         } else { showAlert(`Lỗi trả về từ máy chủ Google:\n👉 ${result.message}`, "❌ LỖI MÁY CHỦ", true); }
     } catch (error) { showAlert(`Không thể kết nối đến máy chủ. Vui lòng kiểm tra lại kết nối mạng của bạn!\n\n👉 Chi tiết lỗi: ${error}`, "❌ LỖI KẾT NỐI MẠNG", true); } 
     finally { btnPush.disabled = false; btnPush.innerHTML = originalText; }
@@ -1698,7 +1778,7 @@ function loadOldCandidate(index) {
 
     let title = isApproved ? "🔒 Hồ sơ đã duyệt trúng tuyển" : "💡 Đã tải lại hồ sơ";
     let message = isApproved 
-        ? "Hồ sơ này đã ĐƯỢC DUYỆT TRÚNG TUYỂN.\n\n👉 Bạn chỉ có thể TÍCH BỔ SUNG hồ sơ đính kèm, KHÔNG ĐƯỢC PHÉP sửa thông tin cá nhân hay điểm số!" 
+        ? "Hồ sơ này đã ĐƯỢC DUYỆT TRÚNG TUYỂN.\n\n👉 Bạn chỉ có thể TÍCH BỔ SUNG hồ sơ đính kèm !" 
         : "Hồ sơ đã trả về.\n\n👉 Bạn có thể bổ sung thông tin, NGOẠI TRỪ NGÀNH XÉT TUYỂN.";
 
     // Gọi Modal tùy chỉnh
@@ -1944,7 +2024,7 @@ async function processCCCDImage(input) {
 
     if (!isLoggedIn()) {
         input.value = "";
-        showAlert("Phiên đăng nhập đã hết hạn hoặc chưa đăng nhập, vui lòng đăng nhập lại.", "⚠️ CHƯA ĐĂNG NHẬP", true);
+        showAlert("Phiên làm việc đã quá hạn , vui lòng đăng nhập lại.", "⚠️ CHƯA ĐĂNG NHẬP", true);
         return;
     }
 
@@ -2026,7 +2106,7 @@ async function processCCCDImage(input) {
                     if (hetHan) {
                         statusText.innerText = `❌ Giấy tờ hết hiệu lực (hạn: ${hanSuDung}) — không thể sử dụng.`;
                         statusText.style.color = "#d32f2f";
-                        showAlert(`${loaiGiayTo === "hochieu" ? "Hộ chiếu" : "CCCD"} này đã HẾT HIỆU LỰC từ ngày ${hanSuDung}.\n\nVui lòng dùng giấy tờ còn hiệu lực, hệ thống sẽ không tự động điền dữ liệu từ ảnh này.`, "⚠️ GIẤY TỜ HẾT HIỆU LỰC", true);
+                        showAlert(`${loaiGiayTo === "hochieu" ? "Hộ chiếu" : "CCCD"} này đã HẾT HIỆU LỰC từ ngày ${hanSuDung}.\n\nVui lòng sử dụng giấy tờ còn hiệu lực.`, "⚠️ GIẤY TỜ HẾT HIỆU LỰC", true);
                         input.value = "";
                         return;
                     }
