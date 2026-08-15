@@ -800,7 +800,7 @@ function showUpdateOrInsertConfirm(message, dataInfo, onUpdateCallback, onInsert
         contentHtml += `<b>Hồ sơ ${idx + 1}:</b><br/>`;
         contentHtml += `- Họ tên: ${hs.hoTen}<br/>`;
         contentHtml += `- Ngành: ${hs.nganh}<br/>`;
-        contentHtml += `- Ngày nộp: ${hs.thoiGian.split(' ')[0]}<br/>`;
+        contentHtml += `- Ngày nộp: ${hs.thoiGian ? hs.thoiGian.split(' ')[0] : '(chưa đẩy lên hệ thống)'}<br/>`;
         contentHtml += `- Trạng thái: <b>${hs.trangThai}</b><br/><br/>`;
     });
     contentHtml += `</div>`;
@@ -1007,6 +1007,34 @@ function addRow() {
         return; // Chặn lại, không cho chạy tiếp lệnh bên dưới
     }
 
+    // 3. ĐÃ THÊM: kiểm tra trùng CĂN CƯỚC + NGÀNH ngay với danh sách đang có TRÊN WEB (dataList) — bắt
+    // sớm trường hợp gõ tay trùng hồ sơ đã có sẵn, không cần đợi tới lúc bấm "Đẩy dữ liệu lên hệ thống".
+    // Chỉ kiểm tra LOCAL, không gọi server — hồ sơ lọt lưới (do dataList bị mất, hoặc người khác vừa đẩy
+    // từ máy khác) vẫn được checkDuplicatesBeforePush()/executeUploadToCloud() bắt lại ở bước Đẩy.
+    const cccdInput = fields[0].value.trim().replace(/\D/g, '');
+    const nganhInput = fields[3].value.trim().toLowerCase();
+    const dupIndex = dataList.findIndex((row, idx) => {
+        if (idx === editingIndex) return false; // đang sửa chính dòng này thì không tính là trùng với chính nó
+        const rowCccd = String(row["CĂN CƯỚC"] || row["SỐ CCCD"] || "").replace(/\D/g, '');
+        const rowNganh = String(row["NGÀNH"] || "").trim().toLowerCase();
+        return cccdInput && rowCccd === cccdInput && rowNganh === nganhInput;
+    });
+
+    if (dupIndex !== -1) {
+        const dupRow = dataList[dupIndex];
+        showUpdateOrInsertConfirm(
+            "Hồ sơ với CĂN CƯỚC và NGÀNH này ĐÃ CÓ SẴN trong danh sách bên dưới:",
+            [{ hoTen: dupRow["TÊN SINH VIÊN"], nganh: dupRow["NGÀNH"], thoiGian: dupRow["TIME"] || "", trangThai: dupRow["TRẠNG THÁI ĐẨY"] }],
+            () => { editRow(dupIndex); },      // "Cập nhật hồ sơ hiện tại" -> bỏ dữ liệu vừa gõ, mở hồ sơ cũ ra sửa
+            () => { commitAddRow(fields); }    // "Thêm hồ sơ mới" -> vẫn cho thêm bình thường (VD: trường hợp đặc biệt thật sự cần 2 dòng)
+        );
+        return;
+    }
+
+    commitAddRow(fields);
+}
+
+function commitAddRow(fields) {
     const newRowData = {
         "STT": editingIndex !== -1 ? dataList[editingIndex]["STT"] : dataList.length + 1, "TRẠNG THÁI ĐẨY": "Waiting", 
         "_Action": currentAction, 
@@ -1047,6 +1075,7 @@ function renderTable() {
     const tbody = document.getElementById('tableBody'); tbody.innerHTML = '';
     dataList.forEach((row, index) => {
         const isUp = row["TRẠNG THÁI ĐẨY"] === "Uploaded";
+        const isDup = row["TRẠNG THÁI ĐẨY"] === "Duplicated";
         const actionText = row["_Action"] === "UPDATE" ? '<span style="color:#f57c00;font-weight:bold;">[UPDATE]</span> ' : '';
         const tr = document.createElement('tr'); if (isUp) tr.className = "row-uploaded";
         tr.style.cursor = "pointer";
@@ -1062,7 +1091,7 @@ function renderTable() {
         // tay từng fmtTick(row["..."]) nữa. Thêm/sửa/xóa 1 loại hồ sơ chỉ cần sửa data_config.js.
         // LƯU Ý: cần thêm 1 cột <th>Kết quả sơ tuyển</th> tương ứng trong <thead> của file HTML
         // (chưa có trong file JS này) để bảng không bị lệch cột — gửi file HTML tôi gắn nốt.
-        tr.innerHTML = `<td>${row["STT"]}</td><td class="${isUp ? 'status-done' : 'status-pending'}">${row["TRẠNG THÁI ĐẨY"]}</td><td style="font-size:12px; line-height:1.5; white-space:normal;">${buildAdmissionSummaryLines(row)}</td><td><b>${actionText}${row["CĂN CƯỚC"] || row["SỐ CCCD"]}</b></td><td>${row["TÊN SINH VIÊN"]}</td><td>${row["NGÀY SINH"]}</td><td>${row["NGÀNH"]}</td><td>${row["KHÓA"]}</td><td>${row["ĐỐI TƯỢNG ƯU TIÊN"]}</td><td>${row["KHU VỰC ƯU TIÊN"]}</td><td>${row["ĐỐI TƯỢNG ĐẦU VÀO"]}</td><td>${row["NĂM XÉT TUYỂN"]}</td><td>${row["HỆ ĐÀO TẠO"]}</td><td>${row["HÌNH THỨC ĐÀO TẠO"]}</td>
+        tr.innerHTML = `<td>${row["STT"]}</td><td class="${isUp ? 'status-done' : (isDup ? 'status-duplicate' : 'status-pending')}">${row["TRẠNG THÁI ĐẨY"]}</td><td style="font-size:12px; line-height:1.5; white-space:normal;">${buildAdmissionSummaryLines(row)}</td><td><b>${actionText}${row["CĂN CƯỚC"] || row["SỐ CCCD"]}</b></td><td>${row["TÊN SINH VIÊN"]}</td><td>${row["NGÀY SINH"]}</td><td>${row["NGÀNH"]}</td><td>${row["KHÓA"]}</td><td>${row["ĐỐI TƯỢNG ƯU TIÊN"]}</td><td>${row["KHU VỰC ƯU TIÊN"]}</td><td>${row["ĐỐI TƯỢNG ĐẦU VÀO"]}</td><td>${row["NĂM XÉT TUYỂN"]}</td><td>${row["HỆ ĐÀO TẠO"]}</td><td>${row["HÌNH THỨC ĐÀO TẠO"]}</td>
             ${fmtLink(row["LINK HỒ SƠ"])}${ALL_HO_SO_DOCS.map(doc => fmtTick(row[doc.name.toUpperCase()])).join('')}
             <td>${row["GIẤY TỜ ƯU TIÊN"]}</td><td>${row["TOÁN"]}</td><td>${row["VẬT LÍ"]}</td><td>${row["HÓA HỌC"]}</td><td>${row["SINH HỌC"]}</td><td>${row["NGỮ VĂN"]}</td><td>${row["LỊCH SỬ"]}</td><td>${row["ĐỊA LÝ"]}</td><td>${row["TIẾNG ANH"]}</td><td>${row["TIẾNG TRUNG"]}</td><td>${row["TIN HỌC"]}</td><td>${row["GDKTPL"]}</td><td><b>${row["ĐIỂM TB TOÀN KHÓA HỆ 4"]}</b></td><td><b>${row["ĐIỂM TB TOÀN KHÓA HỆ 10"]}</b></td><td><b style="color:#d32f2f">${row["ĐIỂM CỘNG"]}</b></td>
             <td>${!isUp ? `<div style="display:flex;"><button class="btn-edit-row" onclick="editRow(${index})" ${editingIndex !== -1 ? 'disabled style="opacity:0.5; cursor:not-allowed;"' : ''}>✏️</button><button class="btn-delete-row" onclick="deleteRow(${index})" ${editingIndex !== -1 ? 'disabled style="opacity:0.5; cursor:not-allowed;"' : ''}>🗑️</button></div>` : ''}</td>`;
@@ -1571,7 +1600,7 @@ function getNowTimestampAsText() {
 // có nên chặn cứng hay chỉ cảnh báo khi không kiểm tra được).
 async function checkDuplicatesBeforePush(pendingList) {
     const insertRows = pendingList.filter(row => row["_Action"] !== "UPDATE");
-    if (insertRows.length === 0) return { ok: true, duplicates: [] };
+    if (insertRows.length === 0) return { ok: true, duplicates: [], duplicateRows: [] };
 
     const keys = insertRows.map(row => ({ cccd: row["CĂN CƯỚC"] || row["SỐ CCCD"] || "", nganh: row["NGÀNH"] || "" }));
 
@@ -1582,26 +1611,32 @@ async function checkDuplicatesBeforePush(pendingList) {
             body: JSON.stringify({ idToken: currentIdToken, action: "checkDuplicates", keys: keys })
         });
         const result = await resp.json();
-        if (result.status !== "success" || !Array.isArray(result.results)) return { ok: false, duplicates: [] };
+        if (result.status !== "success" || !Array.isArray(result.results)) return { ok: false, duplicates: [], duplicateRows: [] };
 
         const duplicates = [];
+        // ĐÃ THÊM: duplicateRows giữ THAM CHIẾU trực tiếp tới các dòng bị trùng trong dataList (insertRows
+        // là kết quả filter() trên pendingList, mà pendingList lại filter() trên dataList — filter() không
+        // clone object nên sửa row["TRẠNG THÁI ĐẨY"] ở đây phản ánh thẳng vào dataList, không cần tìm lại index).
+        const duplicateRows = [];
         result.results.forEach((r, idx) => {
             const rowLabel = insertRows[idx]["TÊN SINH VIÊN"] || r.cccd;
             if (r.exists) {
                 duplicates.push(`- [${rowLabel}] (CCCD ${r.cccd} - ${r.nganh}) đã TỒN TẠI trên hệ thống${r.ten ? ` (tên đang lưu: ${r.ten})` : ""}${r.trangThai ? `, trạng thái: ${r.trangThai}` : ""}.`);
+                duplicateRows.push(insertRows[idx]);
             } else if (r.duplicateInBatch) {
                 const otherLabel = insertRows[r.duplicateWithRow] ? (insertRows[r.duplicateWithRow]["TÊN SINH VIÊN"] || "") : "";
                 duplicates.push(`- [${rowLabel}] (CCCD ${r.cccd} - ${r.nganh}) TRÙNG với hồ sơ [${otherLabel}] khác NGAY TRONG danh sách đang chờ đẩy.`);
+                duplicateRows.push(insertRows[idx]);
             }
         });
-        return { ok: true, duplicates: duplicates };
+        return { ok: true, duplicates: duplicates, duplicateRows: duplicateRows };
     } catch (e) {
-        return { ok: false, duplicates: [] };
+        return { ok: false, duplicates: [], duplicateRows: [] };
     }
 }
 
 async function sendToCloud() {
-    const pendingList = dataList.filter(row => row["TRẠNG THÁI ĐẨY"] === "Waiting");
+    let pendingList = dataList.filter(row => row["TRẠNG THÁI ĐẨY"] === "Waiting");
     if (pendingList.length === 0) { 
         showAlert("Không có hồ sơ mới nào để đẩy lên hệ thống!\n\n👉 Tất cả dữ liệu hiện tại đều đã được tải lên thành công.", "⚠️ KHÔNG CÓ DỮ LIỆU MỚI", true); 
         return; 
@@ -1613,14 +1648,23 @@ async function sendToCloud() {
     btnPush.disabled = false; btnPush.innerHTML = originalPushText;
 
     if (dupCheck.ok && dupCheck.duplicates.length > 0) {
-        // TRÙNG THẬT SỰ (đã có trên hệ thống, hoặc trùng ngay trong danh sách đang chờ) -> CHẶN CỨNG,
-        // không cho đẩy tiếp. Người dùng phải tự sửa (xoá bớt dòng trùng, hoặc dùng "🔍 Tìm hồ sơ cũ" để UPDATE).
+        // ĐÃ ĐỔI: không còn chặn cứng cả lô nữa — chỉ đánh dấu riêng CÁC DÒNG TRÙNG thành "Duplicated"
+        // ngay trên danh sách web1 (vẫn sửa/xoá được bình thường; bấm "Cập nhật thay đổi" ở form sẽ tự
+        // đưa trạng thái về lại "Waiting", xem hàm lưu form). Các dòng KHÔNG trùng trong cùng lô vẫn được
+        // đẩy tiếp bên dưới như bình thường.
+        dupCheck.duplicateRows.forEach(row => { row["TRẠNG THÁI ĐẨY"] = "Duplicated"; });
+        renderTable();
+
         showAlert(
-            "Phát hiện hồ sơ TRÙNG Căn cước + Ngành, KHÔNG THỂ đẩy lên:\n\n" + dupCheck.duplicates.join('\n') +
-            "\n\n👉 Nếu là hồ sơ nộp bổ sung, hãy dùng chức năng \"🔍 Tìm hồ sơ cũ\" để sửa thay vì thêm mới.",
-            "⛔ TRÙNG DỮ LIỆU", true
+            "Phát hiện hồ sơ TRÙNG Căn cước + Ngành, đã đánh dấu \"Duplicated\" trong danh sách, KHÔNG đẩy lên hệ thống:\n\n" + dupCheck.duplicates.join('\n') +
+            "\n\n👉 Nếu là hồ sơ nộp bổ sung, hãy dùng chức năng \"🔍 Tìm hồ sơ cũ\" để sửa. Nếu là nhập nhầm, bấm ✏️ Sửa rồi Cập nhật lại — trạng thái sẽ tự quay về \"Waiting\" để đẩy lại.",
+            "⚠️ MỘT SỐ HỒ SƠ TRÙNG DỮ LIỆU", true
         );
-        return;
+
+        // Lọc bỏ các dòng vừa đánh dấu Duplicated khỏi lô đang định đẩy, chỉ tiếp tục với phần còn sạch.
+        const duplicateSet = new Set(dupCheck.duplicateRows);
+        pendingList = pendingList.filter(row => !duplicateSet.has(row));
+        if (pendingList.length === 0) return; // toàn bộ lô đều trùng, không còn gì để đẩy tiếp
     }
     if (!dupCheck.ok) {
         // Không kiểm tra trùng được (mất mạng, server lỗi...) — vẫn cho tiếp tục vì server sẽ tự chặn
@@ -1685,7 +1729,8 @@ async function executeUploadToCloud(pendingList) {
         if (result.status === "success") {
             // "skipped": server đã tự chặn các dòng TRÙNG (cùng CĂN CƯỚC+NGÀNH) ngay tại thời điểm ghi thật —
             // có thể xảy ra dù đã checkDuplicates trước đó (VD: người khác vừa ghi trùng ngay trước khi mình bấm gửi).
-            // Các dòng này KHÔNG được đánh dấu "Uploaded", để người dùng thấy vẫn còn "Waiting" và tự xử lý lại.
+            // ĐÃ ĐỔI: đánh dấu "Duplicated" (thay vì giữ "Waiting") để đồng bộ với cách xử lý ở bước kiểm
+            // tra trước (checkDuplicatesBeforePush) — người dùng nhìn cột trạng thái là biết ngay cần xử lý.
             const skipped = Array.isArray(result.skipped) ? result.skipped : [];
             const skippedKeys = new Set(skipped.map(s => String(s.cccd || "").replace(/\D/g, '') + "|" + String(s.nganh || "").trim().toLowerCase()));
 
@@ -1693,7 +1738,7 @@ async function executeUploadToCloud(pendingList) {
             dataList.forEach(row => {
                 if (row["TRẠNG THÁI ĐẨY"] !== "Waiting") return;
                 const rowKey = String(row["CĂN CƯỚC"] || "").replace(/\D/g, '') + "|" + String(row["NGÀNH"] || "").trim().toLowerCase();
-                if (skippedKeys.has(rowKey)) return; // giữ nguyên "Waiting" — bị server chặn vì trùng
+                if (skippedKeys.has(rowKey)) { row["TRẠNG THÁI ĐẨY"] = "Duplicated"; return; }
                 row["TRẠNG THÁI ĐẨY"] = "Uploaded";
                 uploadedCount++;
             });
@@ -1702,7 +1747,7 @@ async function executeUploadToCloud(pendingList) {
             if (skipped.length > 0) {
                 const skippedText = skipped.map(s => `- [${s.ten || s.cccd}] (CCCD ${s.cccd} - ${s.nganh})`).join('\n');
                 showAlert(
-                    `Đã nạp thành công ${uploadedCount} hồ sơ lúc ${displayTime}.\n\n⚠️ ${skipped.length} hồ sơ bị máy chủ TỪ CHỐI vì TRÙNG Căn cước + Ngành với dữ liệu đã có, vẫn còn ở trạng thái "Waiting":\n${skippedText}\n\n👉 Kiểm tra lại, nếu là nộp bổ sung hãy dùng "🔍 Tìm hồ sơ cũ" để sửa.`,
+                    `Đã nạp thành công ${uploadedCount} hồ sơ lúc ${displayTime}.\n\n⚠️ ${skipped.length} hồ sơ bị máy chủ TỪ CHỐI vì TRÙNG Căn cước + Ngành với dữ liệu đã có, đã đánh dấu "Duplicated":\n${skippedText}\n\n👉 Kiểm tra lại, nếu là nộp bổ sung hãy dùng "🔍 Tìm hồ sơ cũ" để sửa.`,
                     "⚠️ MỘT SỐ HỒ SƠ BỊ TỪ CHỐI", true
                 );
             } else {
