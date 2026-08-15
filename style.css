@@ -20,17 +20,19 @@ option { color: var(--text); }
 
 /* CHECKLIST HỒ SƠ & ĐIỂM SỐ */
 .doc-container, .score-container { background-color: #eef7f6; border: 1px dashed #008080; border-radius: 6px; padding: 15px 20px; margin-bottom: 20px; }
-.doc-common-box { background-color: #fff8e1; border: 1px solid #ffe082; border-radius: 6px; padding: 15px 20px; margin-bottom: 20px; }
-.doc-common-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px; border-bottom: 1px solid #ffecb3; padding-bottom: 8px; }
-.doc-common-header h4 { margin: 0; color: #f57f17; font-size: 14px; }
+.doc-common-box { background-color: #fff8e1; border: 1px solid #ffe082; border-radius: 6px; padding: 10px 14px; margin-bottom: 10px; }
+.doc-common-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 6px; border-bottom: 1px solid #ffecb3; padding-bottom: 8px; }
+.doc-common-header h4 { margin: 0 0 6px 0; color: #f57f17; font-size: 14px; }
 .btn-mini { background: #ffb300; color: #fff; border: none; padding: 4px 10px; border-radius: 4px; font-size: 12px; cursor: pointer; font-weight: bold; }
 .btn-mini:hover { background: #ffa000; }
 .doc-placeholder { color: #666666; font-style: italic; font-size: 14px; text-align: center; padding: 10px 0; }
 .doc-group, .score-group { display: none; width: 100%; }
-.doc-group h4, .score-group h4 { margin: 0 0 10px 0; color: #0277bd; font-size: 14px; border-bottom: 1px solid #b2ebf2; padding-bottom: 5px; }
-.checkbox-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin-bottom: 15px; }
+.doc-group { padding: 10px 14px; margin-bottom: 10px; }
+.doc-group h4 { margin: 0 0 6px 0; color: #0277bd; font-size: 14px; border-bottom: 1px solid #b2ebf2; padding-bottom: 5px; }
+.score-group h4 { margin: 0 0 10px 0; color: #0277bd; font-size: 14px; border-bottom: 1px solid #b2ebf2; padding-bottom: 5px; }
+.checkbox-grid { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); column-gap: 14px; row-gap: 4px; margin-bottom: 15px; }
 .score-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 12px; margin-bottom: 15px; }
-.checkbox-item { display: flex; align-items: center; background: #ffffff; padding: 8px 12px; border-radius: 4px; border: 1px solid #d0e8e6; cursor: pointer; transition: all 0.2s; }
+.checkbox-item { display: flex; align-items: center; background: #ffffff; padding: 2px 0; margin: 0; border-radius: 4px; border: 1px solid #d0e8e6; cursor: pointer; transition: all 0.2s; font-size: 13px; }
 .checkbox-item:hover { background: #e0f2f1; border-color: var(--primary); }
 .checkbox-item input[type="checkbox"] { margin-right: 10px; width: 18px; height: 18px; cursor: pointer; accent-color: var(--primary); }
 .checkbox-item span { font-size: 13px; font-weight: 500; user-select: none; }
@@ -171,4 +173,162 @@ tr:nth-child(even) { background-color: #f9f9f9; }
 @media (max-width: 480px) {
     .info-grid { grid-template-columns: 1fr; }
     .filter-group { min-width: 100%; }
+}
+
+/* ========================================================
+   MÀN HÌNH CHẶN — BẮT BUỘC ĐĂNG NHẬP GOOGLE (dời từ <style> trong <head> index.html)
+   ======================================================== */
+#loginGate { box-sizing: border-box; }
+#loginGate * { box-sizing: border-box; }
+#loginGate .gate-box {
+    background: #fff;
+    padding: clamp(20px, 5vw, 30px) clamp(16px, 4vw, 25px);
+    border-radius: 10px;
+    box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+    max-width: 480px;
+    width: 100%;
+}
+#loginGate .gate-title {
+    margin-top: 0;
+    font-size: clamp(18px, 4.6vw, 24px);
+    line-height: 1.35;
+    white-space: normal;
+    word-break: keep-all;
+    overflow-wrap: break-word;
+}
+@media (max-width: 380px) {
+    #loginGate .gate-title { font-size: 17px; }
+}
+/* Màn hình máy tính: mở rộng khung ra để tiêu đề nằm gọn 1 hàng, không bị rớt chữ xuống dòng */
+@media (min-width: 601px) {
+    #loginGate .gate-box { max-width: 620px; }
+    #loginGate .gate-title { font-size: 24px; white-space: nowrap; }
+}
+
+/* ========================================================
+   RESPONSIVE RIÊNG CHO .checkbox-grid CỦA WEB1 (dời từ <style> trong <head> index.html)
+   Đặt SAU khối @media (max-width: 768px) phía trên để thắng đúng breakpoint
+   (768px vốn ép checkbox-grid về 1 cột — 2 khối dưới đây thu hẹp dần: 3 cột ở ≤900px, 2 cột ở ≤600px).
+   ======================================================== */
+@media (max-width: 900px) {
+    .checkbox-grid { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+}
+@media (max-width: 600px) {
+    .checkbox-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+}
+
+/* ========================================================
+   HÀNG NÚT CÔNG CỤ: Import từ Excel / Tìm hồ sơ cũ / Quét CCCD
+   (dời từ <style> trong <head> index.html)
+   ======================================================== */
+.toolbar-actions-row {
+    display: grid;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    gap: 10px;
+    margin-bottom: 14px;
+}
+.btn-toolbar-action {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 6px;
+    font-family: inherit;
+    font-size: 13px;
+    font-weight: bold;
+    color: #fff;
+    border: none;
+    padding: 9px 10px;
+    border-radius: 4px;
+    cursor: pointer;
+    box-shadow: 0 1px 3px rgba(0,0,0,0.2);
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+.btn-toolbar-action:hover { filter: brightness(1.08); }
+.btn-toolbar-import { background: #7b1fa2; }
+.btn-toolbar-search { background: #f57c00; }
+.btn-toolbar-scan { background: #4a7536; }
+@media (max-width: 700px) {
+    .toolbar-actions-row { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+}
+@media (max-width: 420px) {
+    .toolbar-actions-row { grid-template-columns: 1fr; }
+}
+
+/* ========================================================
+   MODAL "CHI TIẾT HỒ SƠ" (click đúp vào dòng trong bảng danh sách)
+   Dời từ CSS được app_fixed4.js chèn động qua document.createElement('style')
+   trong ensureHoSoDetailModal() — giờ tĩnh sẵn trong style.css, JS không tự chèn <style> nữa.
+   ======================================================== */
+#hoSoDetailModal { display:none; position:fixed; top:0; left:0; width:100%; height:100%;
+    background:rgba(0,0,0,0.35); z-index:10020; align-items:center; justify-content:center; }
+#hoSoDetailModal .hs-box { background:#fdfdfb; color:#222; width:min(660px, 94vw); max-height:88vh;
+    overflow-y:auto; border-radius:6px; border:1px solid #ccc; box-shadow:0 4px 18px rgba(0,0,0,0.25); }
+#hoSoDetailModal .hs-header { display:flex; justify-content:space-between; align-items:center;
+    background:#f0f0ec; color:#222; padding:12px 16px; border-bottom:1px solid #ddd;
+    border-radius:6px 6px 0 0; position:sticky; top:0; }
+#hoSoDetailModal .hs-header b { font-size:15px; }
+#hoSoDetailModal .hs-close-x { cursor:pointer; font-size:18px; color:#555; background:none; border:none; line-height:1; }
+#hoSoDetailModal .hs-body { padding:12px 16px; font-size:12.5px; }
+#hoSoDetailModal .hs-section-title { font-weight:bold; margin:12px 0 5px; color:#333; }
+#hoSoDetailModal .hs-section-title:first-child { margin-top:0; }
+#hoSoDetailModal .hs-table-wrap { display:flex; justify-content:center; width:100%; overflow-x:auto; }
+#hoSoDetailModal table.hs-table { width:auto; min-width:0; max-width:100%; table-layout:fixed; border-collapse:collapse; background:#fafaf8; margin:0 auto; }
+#hoSoDetailModal table.hs-table th, #hoSoDetailModal table.hs-table td { border:1px solid #ddd; padding:4px 9px; text-align:left; vertical-align:top; font-size:12.5px; word-break:break-word; overflow-wrap:break-word; }
+#hoSoDetailModal table.hs-table th { background:#f2f2ee; font-weight:600; color:#333; white-space:normal; width:118px; }
+#hoSoDetailModal table.hs-table td { width:172px; }
+#hoSoDetailModal table.hs-table td.hs-tick-true { text-align:center; color:#222; font-weight:bold; }
+#hoSoDetailModal table.hs-table td.hs-tick-false { text-align:center; color:#666; }
+#hoSoDetailModal .hs-footer { display:flex; justify-content:flex-end; gap:8px; padding:12px 16px;
+    border-top:1px solid #ddd; background:#f7f7f4; border-radius:0 0 6px 6px; position:sticky; bottom:0; }
+#hoSoDetailModal .hs-btn { padding:7px 14px; border-radius:4px; border:1px solid #bbb; background:#fff; color:#222; cursor:pointer; font-size:13px; }
+#hoSoDetailModal .hs-btn:hover { background:#eee; }
+#hoSoDetailModal .hs-btn:disabled { opacity:0.5; cursor:not-allowed; }
+#hoSoDetailModal .hs-btn-danger { border-color:#c9a0a0; }
+#hoSoDetailModal .hs-note { color:#777; font-style:italic; font-size:12px; }
+
+/* ========================================================
+   MODAL "IMPORT DỮ LIỆU TỪ EXCEL" — style còn thiếu cho các class
+   btn-template-download / import-file-row / import-file-namebox /
+   btn-import-action / import-hint (trước giờ chưa có CSS nào, nhìn xấu).
+   ======================================================== */
+.btn-template-download {
+    display: flex; align-items: center; justify-content: center; gap: 6px;
+    background-color: #eef7f6; color: var(--primary-dark); text-decoration: none;
+    border: 1px dashed var(--primary); border-radius: 6px;
+    padding: 10px 14px; font-size: 13px; font-weight: 600;
+    margin-bottom: 16px; transition: 0.2s;
+}
+.btn-template-download:hover { background-color: #d9f0ee; border-color: var(--primary-dark); }
+
+.import-file-row {
+    display: flex; align-items: center; gap: 10px;
+    background: #f8fbfb; border: 1px solid #d0e8e6; border-radius: 6px;
+    padding: 8px 10px; margin-bottom: 10px;
+}
+.import-file-namebox {
+    flex: 1; min-width: 0;
+    font-size: 13px; color: #555555;
+    white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+}
+.btn-import-action {
+    flex-shrink: 0;
+    background-color: var(--primary); color: #ffffff;
+    border: none; border-radius: 4px;
+    padding: 8px 14px; font-size: 13px; font-weight: 600;
+    cursor: pointer; transition: 0.2s;
+    display: flex; align-items: center; gap: 5px;
+}
+.btn-import-action:hover:not(:disabled) { background-color: var(--primary-dark); }
+.btn-import-action:disabled { background-color: #cccccc; color: #666666; cursor: not-allowed; }
+
+.import-hint {
+    font-size: 12px; color: #777777; line-height: 1.5;
+    background: #f4f7f6; border-radius: 4px; padding: 8px 10px;
+}
+
+@media (max-width: 480px) {
+    .import-file-row { flex-direction: column; align-items: stretch; }
+    .btn-import-action { width: 100%; justify-content: center; padding: 10px; }
 }
