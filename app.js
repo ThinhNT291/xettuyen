@@ -544,36 +544,22 @@ function computeAdmissionCore(input) {
 }
 
 // Wrapper cũ: đọc từ DOM (form nhập tay), giữ NGUYÊN hành vi/giao diện traffic-light-box như trước.
-// ĐÃ VÁ LỖI "kẹt Analyzing...": trước đây nếu DICT_HO_SO (data_config.js) có 1 id không khớp checkbox nào
-// trong DOM (vd id đã bị xóa khỏi form nhưng quên xóa trong DICT_HO_SO), document.getElementById(...).checked
-// ném TypeError ngay giữa hàm — đúng lúc box đã lỡ hiện ra (display:flex) nhưng chưa kịp ghi đè chữ
-// "Analyzing..." mặc định trong HTML -> kẹt vĩnh viễn, không có thông báo lỗi nào cho biết vì sao.
-// Vá theo 2 lớp:
-//   1) isDocChecked không còn tự crash khi thiếu checkbox — coi như "chưa tick" (false) và ghi cảnh báo
-//      console.warn để dễ phát hiện lệch dữ liệu, KHÔNG làm vỡ luồng tính toán.
-//   2) Toàn bộ phần tính toán được bọc try/catch — nếu vẫn có lỗi phát sinh khác, box hiện thông báo lỗi rõ
-//      ràng ("Không tính được kết quả...") thay vì treo im lặng ở "Analyzing...".
+// Bọc try/catch quanh toàn bộ phần lõi: nếu có lệch dữ liệu (thiếu id trong DOM, config rác...)
+// thì box hiện thông báo lỗi rõ ràng ngay, thay vì kẹt "Analyzing..." im lặng như bug cũ.
 function autoCheckAdmission() {
-    const nganh = document.getElementById('nganh').value;
-    const doiTuongDauVao = document.getElementById('doituongdauvao').value;
     const box = document.getElementById('traffic-light-box');
-
-    if (!nganh || !doiTuongDauVao) { box.style.display = 'none'; return; }
-    box.style.display = 'flex';
-
-    const titleEl = document.getElementById('tl-title');
-    const hsDescEl = document.getElementById('tl-hs-desc');
-    const diemDescEl = document.getElementById('tl-diem-desc');
-    const iconEl = document.getElementById('tl-icon');
+    if (!box) return; // phòng trường hợp HTML chưa kịp render / bị đổi id
 
     try {
+        const nganh = document.getElementById('nganh').value;
+        const doiTuongDauVao = document.getElementById('doituongdauvao').value;
+
+        if (!nganh || !doiTuongDauVao) { box.style.display = 'none'; return; }
+        box.style.display = 'flex';
+
         const result = computeAdmissionCore({
             nganh, doiTuongDauVao,
-            isDocChecked: (doc) => {
-                const el = document.getElementById(doc.id);
-                if (!el) { console.warn(`[autoCheckAdmission] Thiếu checkbox #${doc.id} ("${doc.name}") trong DOM — kiểm tra lại DICT_HO_SO trong data_config.js.`); return false; }
-                return el.checked;
-            },
+            isDocChecked: (doc) => document.getElementById(doc.id).checked,
             khuVucUuTien: document.getElementById('khuvucuutien').value,
             doiTuongUuTien: document.getElementById('doituonguutien').value,
             getScore: (fieldId) => getVal(fieldId),
@@ -581,18 +567,32 @@ function autoCheckAdmission() {
         });
         if (!result) { box.style.display = 'none'; return; }
 
+        const titleEl = document.getElementById('tl-title');
+        const hsDescEl = document.getElementById('tl-hs-desc');
+        const diemDescEl = document.getElementById('tl-diem-desc');
+        const iconEl = document.getElementById('tl-icon');
+
         hsDescEl.innerHTML = result.hsMsg; hsDescEl.style.color = result.hsColor;
         diemDescEl.innerHTML = `📊 Kết quả điểm: ${result.diemMsg}`;
 
         box.style.backgroundColor = result.boxBg; box.style.borderColor = result.boxBorder;
         iconEl.innerHTML = result.icon; titleEl.innerHTML = result.title; titleEl.style.color = result.titleColor;
-    } catch (e) {
-        console.error("[autoCheckAdmission] Lỗi khi tính kết quả sơ tuyển:", e);
-        box.style.backgroundColor = '#f8d7da'; box.style.borderColor = '#f5c6cb';
-        iconEl.innerHTML = '⚠️';
-        titleEl.innerHTML = "KHÔNG TÍNH ĐƯỢC KẾT QUẢ"; titleEl.style.color = '#721c24';
-        hsDescEl.innerHTML = "Có lỗi dữ liệu khi tính sơ tuyển — vui lòng báo kỹ thuật (xem Console: F12) thay vì kẹt màn hình."; hsDescEl.style.color = '#721c24';
-        diemDescEl.innerHTML = "";
+    } catch (err) {
+        // Không để lỗi runtime nào làm box kẹt "Analyzing..." vô thời hạn nữa —
+        // hiện rõ thông báo lỗi + log chi tiết ra console để dễ tra nguyên nhân (vd data_config.js
+        // định nghĩa 1 checkbox không tồn tại trong HTML, giống bug doc_khaisinh trước đây).
+        console.error('autoCheckAdmission() lỗi:', err);
+        box.style.display = 'flex';
+        box.style.backgroundColor = '#f8d7da';
+        box.style.borderColor = '#f5c6cb';
+        const titleEl = document.getElementById('tl-title');
+        const hsDescEl = document.getElementById('tl-hs-desc');
+        const diemDescEl = document.getElementById('tl-diem-desc');
+        const iconEl = document.getElementById('tl-icon');
+        if (iconEl) iconEl.innerHTML = '⚠️';
+        if (titleEl) { titleEl.innerHTML = 'LỖI XỬ LÝ - BÁO KỸ THUẬT'; titleEl.style.color = '#721c24'; }
+        if (hsDescEl) { hsDescEl.innerHTML = `Không tính được kết quả sơ tuyển do lỗi dữ liệu/cấu hình: <i>${err.message || err}</i>`; hsDescEl.style.color = '#721c24'; }
+        if (diemDescEl) diemDescEl.innerHTML = '';
     }
 }
 
@@ -1124,16 +1124,37 @@ function hsBuildPairsTable(pairs) {
 }
 
 // Dựng bảng checklist hồ sơ (label + ✔/✘), mỗi hàng 2 cặp cho gọn.
+// Hồ sơ đang THIẾU (val === "FALSE") được highlight nền đỏ nhạt + chữ đỏ đậm cho cả ô nhãn
+// lẫn ô giá trị, để dễ nhận ra ngay cần bổ sung gì (thay vì chỉ có dấu ✘ nhỏ như trước).
 function hsBuildChecklistTable(pairs) {
-    const tickCell = (val) => val === "TRUE" ? `<td class="hs-tick-true">✔</td>` : (val === "FALSE" ? `<td class="hs-tick-false">✘</td>` : `<td>${val || ""}</td>`);
+    const missingStyle = ' style="background:#f8d7da; color:#721c24; font-weight:700;"';
+    const labelCell = (label, val) => val === "FALSE" ? `<th${missingStyle}>${label}</th>` : `<th>${label}</th>`;
+    const tickCell = (val) => val === "TRUE" ? `<td class="hs-tick-true">✔</td>`
+        : (val === "FALSE" ? `<td class="hs-tick-false"${missingStyle}>✘ Thiếu</td>` : `<td>${val || ""}</td>`);
     let rows = '';
     for (let i = 0; i < pairs.length; i += 2) {
         const [l1, v1] = pairs[i];
         const p2 = pairs[i + 1];
-        rows += `<tr><th>${l1}</th>${tickCell(v1)}${p2 ? `<th>${p2[0]}</th>${tickCell(p2[1])}` : `<th></th><td></td>`}</tr>`;
+        rows += `<tr>${labelCell(l1, v1)}${tickCell(v1)}${p2 ? `${labelCell(p2[0], p2[1])}${tickCell(p2[1])}` : `<th></th><td></td>`}</tr>`;
     }
     return `<div class="hs-table-wrap"><table class="hs-table">${rows}</table></div>`;
 }
+
+// Ánh xạ Đối tượng đầu vào -> danh sách nhãn hồ sơ TIÊN QUYẾT tương ứng, lấy đúng theo
+// các nhóm .doc-group (group-thpt, group-tc-sau2022, group-tc-truoc2022, group-caodang, group-daihoc)
+// mà handleDoiTuongChange() đang ẩn/hiện trên form nhập tay — để modal chi tiết lọc field
+// theo đúng "tinh thần" hiển thị của form, không lệch logic ở 2 nơi.
+// Nhãn ở đây phải khớp CHÍNH XÁC với nhãn dùng trong mảng hoSoPairs bên openHoSoDetailModal().
+const HOSO_TIENQUYET_LABELS_BY_DOITUONG = {
+    "Tốt nghiệp THPT": ["Bản sao bằng THPT/Giấy báo điểm", "Bản sao học bạ THPT"],
+    "Tốt nghiệp Trung cấp sau 2022": ["Bản sao bằng trung cấp", "Bảng điểm trung cấp", "Bằng THPT/GCN đủ KL KTVH THPT"],
+    "Tốt nghiệp Trung cấp trước 2022": ["Bản sao bằng trung cấp trước 2022", "Bảng điểm trung cấp trước 2022", "GCN hoàn thành CT GDPT"],
+    "Trung học nghề": ["Bản sao bằng trung cấp trước 2022", "Bảng điểm trung cấp trước 2022", "GCN hoàn thành CT GDPT"],
+    "Tốt nghiệp Cao đẳng": ["Bằng cao đẳng", "Bảng điểm cao đẳng"],
+    "Tốt nghiệp Đại học": ["Bằng đại học", "Bảng điểm đại học"]
+};
+// 4 mục hồ sơ CHUNG luôn hiện với mọi đối tượng đầu vào (đúng khối "doc-chk-common" trên form).
+const HOSO_CHUNG_LABELS = ["Phiếu đăng ký dự tuyển", "Sơ yếu lý lịch", "Bản sao ID", "Ảnh thẻ"];
 
 function openHoSoDetailModal(index) {
     const row = dataList[index];
@@ -1158,26 +1179,58 @@ function openHoSoDetailModal(index) {
         ["Giấy tờ ưu tiên", row["GIẤY TỜ ƯU TIÊN"] || ""], ["Link hồ sơ", linkHtml]
     ];
 
-    const hoSoPairs = [
-        ["Phiếu đăng ký dự tuyển", row["PHIẾU ĐĂNG KÝ DỰ TUYỂN"]], ["Sơ yếu lý lịch", row["SƠ YẾU LÝ LỊCH"]],
-        ["Bản sao ID", row["BẢN SAO ID"]], ["Ảnh thẻ", row["ẢNH THẺ"]],
-        ["Bản sao bằng THPT/Giấy báo điểm", row["BẢN SAO BẰNG THPT/GIẤY BÁO ĐIỂM"]], ["Bản sao học bạ THPT", row["BẢN SAO HỌC BẠ THPT"]],
-        ["Bản sao bằng trung cấp", row["BẢN SAO BẰNG TRUNG CẤP"]], ["Bảng điểm trung cấp", row["BẢNG ĐIỂM TRUNG CẤP"]],
-        ["Bằng THPT/GCN đủ KL KTVH THPT", row["BẰNG THPT/GCN ĐỦ KL KTVH THPT"]], ["Bản sao bằng trung cấp trước 2022", row["BẢN SAO BẰNG TRUNG CẤP TRƯỚC 2022"]],
-        ["Bảng điểm trung cấp trước 2022", row["BẢNG ĐIỂM TRUNG CẤP TRƯỚC 2022"]], ["GCN hoàn thành CT GDPT", row["GCN HOÀN THÀNH CT GDPT"]],
-        ["Bằng cao đẳng", row["BẰNG CAO ĐẲNG"]], ["Bảng điểm cao đẳng", row["BẢNG ĐIỂM CAO ĐẲNG"]],
-        ["Bằng đại học", row["BẰNG ĐẠI HỌC"]], ["Bảng điểm đại học", row["BẢNG ĐIỂM ĐẠI HỌC"]]
-    ];
+    const doiTuongDauVao = row["ĐỐI TƯỢNG ĐẦU VÀO"] || "";
 
-    const diemPairs = [
-        ["Toán", row["TOÁN"] || ""], ["Vật lí", row["VẬT LÍ"] || ""],
-        ["Hóa học", row["HÓA HỌC"] || ""], ["Sinh học", row["SINH HỌC"] || ""],
-        ["Ngữ văn", row["NGỮ VĂN"] || ""], ["Lịch sử", row["LỊCH SỬ"] || ""],
-        ["Địa lý", row["ĐỊA LÝ"] || ""], ["Tiếng Anh", row["TIẾNG ANH"] || ""],
-        ["Tiếng Trung", row["TIẾNG TRUNG"] || ""], ["Tin học", row["TIN HỌC"] || ""],
-        ["GDKTPL", row["GDKTPL"] || ""], ["Điểm cộng", row["ĐIỂM CỘNG"] || ""],
-        ["Điểm TB toàn khóa hệ 4", row["ĐIỂM TB TOÀN KHÓA HỆ 4"] || ""], ["Điểm TB toàn khóa hệ 10", row["ĐIỂM TB TOÀN KHÓA HỆ 10"] || ""]
+    // Hồ sơ CHUNG (luôn hiện) — giữ đúng thứ tự/nhãn cũ.
+    const hoSoChungPairs = [
+        ["Phiếu đăng ký dự tuyển", row["PHIẾU ĐĂNG KÝ DỰ TUYỂN"]], ["Sơ yếu lý lịch", row["SƠ YẾU LÝ LỊCH"]],
+        ["Bản sao ID", row["BẢN SAO ID"]], ["Ảnh thẻ", row["ẢNH THẺ"]]
     ];
+    // Toàn bộ hồ sơ TIÊN QUYẾT có thể có (map nhãn -> giá trị), rồi lọc lại theo đúng
+    // đối tượng đầu vào của hồ sơ này qua HOSO_TIENQUYET_LABELS_BY_DOITUONG.
+    const hoSoTienQuyetAll = {
+        "Bản sao bằng THPT/Giấy báo điểm": row["BẢN SAO BẰNG THPT/GIẤY BÁO ĐIỂM"], "Bản sao học bạ THPT": row["BẢN SAO HỌC BẠ THPT"],
+        "Bản sao bằng trung cấp": row["BẢN SAO BẰNG TRUNG CẤP"], "Bảng điểm trung cấp": row["BẢNG ĐIỂM TRUNG CẤP"],
+        "Bằng THPT/GCN đủ KL KTVH THPT": row["BẰNG THPT/GCN ĐỦ KL KTVH THPT"],
+        "Bản sao bằng trung cấp trước 2022": row["BẢN SAO BẰNG TRUNG CẤP TRƯỚC 2022"], "Bảng điểm trung cấp trước 2022": row["BẢNG ĐIỂM TRUNG CẤP TRƯỚC 2022"],
+        "GCN hoàn thành CT GDPT": row["GCN HOÀN THÀNH CT GDPT"],
+        "Bằng cao đẳng": row["BẰNG CAO ĐẲNG"], "Bảng điểm cao đẳng": row["BẢNG ĐIỂM CAO ĐẲNG"],
+        "Bằng đại học": row["BẰNG ĐẠI HỌC"], "Bảng điểm đại học": row["BẢNG ĐIỂM ĐẠI HỌC"]
+    };
+    const tienQuyetLabels = HOSO_TIENQUYET_LABELS_BY_DOITUONG[doiTuongDauVao] || [];
+    const hoSoTienQuyetPairs = tienQuyetLabels.map(label => [label, hoSoTienQuyetAll[label]]);
+    // Không lọc được đối tượng đầu vào (hồ sơ thiếu/lỗi dữ liệu) → hiện hết để không giấu mất thông tin đã có.
+    const hoSoPairs = tienQuyetLabels.length > 0
+        ? [...hoSoChungPairs, ...hoSoTienQuyetPairs]
+        : [...hoSoChungPairs, ...Object.entries(hoSoTienQuyetAll).map(([l, v]) => [l, v])];
+
+    // Khối điểm: THPT dùng 10 môn thi + Điểm cộng (đúng khối #score-thpt-group, và Điểm cộng luôn
+    // hiện độc lập trên form với mọi đối tượng); các đối tượng còn lại (CĐ/ĐH/TC/THN...) dùng
+    // Điểm TB toàn khóa Hệ 4/Hệ 10 (đúng khối #score-other-group) — Điểm cộng vẫn giữ vì trên form
+    // trường này không nằm trong nhóm bị ẩn theo đối tượng đầu vào.
+    const diemPairs = doiTuongDauVao === "Tốt nghiệp THPT"
+        ? [
+            ["Toán", row["TOÁN"] || ""], ["Vật lí", row["VẬT LÍ"] || ""],
+            ["Hóa học", row["HÓA HỌC"] || ""], ["Sinh học", row["SINH HỌC"] || ""],
+            ["Ngữ văn", row["NGỮ VĂN"] || ""], ["Lịch sử", row["LỊCH SỬ"] || ""],
+            ["Địa lý", row["ĐỊA LÝ"] || ""], ["Tiếng Anh", row["TIẾNG ANH"] || ""],
+            ["Tiếng Trung", row["TIẾNG TRUNG"] || ""], ["Tin học", row["TIN HỌC"] || ""],
+            ["GDKTPL", row["GDKTPL"] || ""], ["Điểm cộng", row["ĐIỂM CỘNG"] || ""]
+          ]
+        : doiTuongDauVao
+        ? [
+            ["Điểm TB toàn khóa hệ 4", row["ĐIỂM TB TOÀN KHÓA HỆ 4"] || ""], ["Điểm TB toàn khóa hệ 10", row["ĐIỂM TB TOÀN KHÓA HỆ 10"] || ""],
+            ["Điểm cộng", row["ĐIỂM CỘNG"] || ""]
+          ]
+        : [ // Không xác định được đối tượng đầu vào → hiện đủ như cũ, tránh mất dữ liệu.
+            ["Toán", row["TOÁN"] || ""], ["Vật lí", row["VẬT LÍ"] || ""],
+            ["Hóa học", row["HÓA HỌC"] || ""], ["Sinh học", row["SINH HỌC"] || ""],
+            ["Ngữ văn", row["NGỮ VĂN"] || ""], ["Lịch sử", row["LỊCH SỬ"] || ""],
+            ["Địa lý", row["ĐỊA LÝ"] || ""], ["Tiếng Anh", row["TIẾNG ANH"] || ""],
+            ["Tiếng Trung", row["TIẾNG TRUNG"] || ""], ["Tin học", row["TIN HỌC"] || ""],
+            ["GDKTPL", row["GDKTPL"] || ""], ["Điểm cộng", row["ĐIỂM CỘNG"] || ""],
+            ["Điểm TB toàn khóa hệ 4", row["ĐIỂM TB TOÀN KHÓA HỆ 4"] || ""], ["Điểm TB toàn khóa hệ 10", row["ĐIỂM TB TOÀN KHÓA HỆ 10"] || ""]
+          ];
 
     document.getElementById('hsDetailBody').innerHTML = `
         <div class="hs-section-title">📄 Thông tin chung</div>
