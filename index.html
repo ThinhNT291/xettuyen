@@ -10,96 +10,6 @@
        <script src="https://cdn.sheetjs.com/xlsx-latest/package/dist/xlsx.full.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/PapaParse/5.4.1/papaparse.min.js"></script>
     <script src="https://accounts.google.com/gsi/client" async defer></script>
-    <style>
-        /* Màn hình chặn đăng nhập — dàn hàng ngang tiêu đề, responsive cho mobile/tablet */
-        #loginGate { box-sizing: border-box; }
-        #loginGate * { box-sizing: border-box; }
-        #loginGate .gate-box {
-            background:#fff;
-            padding: clamp(20px, 5vw, 30px) clamp(16px, 4vw, 25px);
-            border-radius: 10px;
-            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
-            max-width: 480px;
-            width: 100%;
-        }
-        #loginGate .gate-title {
-            margin-top: 0;
-            font-size: clamp(18px, 4.6vw, 24px);
-            line-height: 1.35;
-            white-space: normal;
-            word-break: keep-all;
-            overflow-wrap: break-word;
-        }
-        @media (max-width: 380px) {
-            #loginGate .gate-title { font-size: 17px; }
-        }
-        /* Màn hình máy tính: mở rộng khung ra để tiêu đề nằm gọn 1 hàng, không bị rớt chữ xuống dòng */
-        @media (min-width: 601px) {
-            #loginGate .gate-box { max-width: 620px; }
-            #loginGate .gate-title { font-size: 24px; white-space: nowrap; }
-        }
-
-        /* ==========================================================
-           THU GỌN KHUNG "HỒ SƠ CHUNG" / "HỒ SƠ TIÊN QUYẾT":
-           dồn các ô checkbox lên nhiều cột, giảm khoảng trắng thừa xung quanh.
-           Dùng !important để chắc chắn thắng CSS gốc trong style.css.
-           ========================================================== */
-        .doc-common-box, .doc-group { padding: 10px 14px !important; margin-bottom: 10px !important; }
-        .doc-common-header { margin-bottom: 6px !important; }
-        .doc-common-header h4, .doc-group h4 { margin: 0 0 6px 0 !important; }
-        .checkbox-grid {
-            display: grid !important;
-            grid-template-columns: repeat(4, minmax(0, 1fr)) !important;
-            column-gap: 14px !important;
-            row-gap: 4px !important;
-        }
-        .checkbox-item { padding: 2px 0 !important; margin: 0 !important; font-size: 13px !important; }
-        @media (max-width: 900px) {
-            .checkbox-grid { grid-template-columns: repeat(3, minmax(0, 1fr)) !important; }
-        }
-        @media (max-width: 600px) {
-            .checkbox-grid { grid-template-columns: repeat(2, minmax(0, 1fr)) !important; }
-        }
-
-        /* ==========================================================
-           HÀNG NÚT CÔNG CỤ: Import từ Excel / Tìm hồ sơ cũ / Quét CCCD
-           Gom 3 nút vào 1 hàng grid riêng, đồng bộ font, responsive.
-           ========================================================== */
-        .toolbar-actions-row {
-            display: grid;
-            grid-template-columns: repeat(3, minmax(0, 1fr));
-            gap: 10px;
-            margin-bottom: 14px;
-        }
-        .btn-toolbar-action {
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            gap: 6px;
-            font-family: inherit;
-            font-size: 13px;
-            font-weight: bold;
-            color: #fff;
-            border: none;
-            padding: 9px 10px;
-            border-radius: 4px;
-            cursor: pointer;
-            box-shadow: 0 1px 3px rgba(0,0,0,0.2);
-            white-space: nowrap;
-            overflow: hidden;
-            text-overflow: ellipsis;
-        }
-        .btn-toolbar-action:hover { filter: brightness(1.08); }
-        .btn-toolbar-import { background: #7b1fa2; }
-        .btn-toolbar-search { background: #f57c00; }
-        .btn-toolbar-scan { background: #4a7536; }
-        @media (max-width: 700px) {
-            .toolbar-actions-row { grid-template-columns: repeat(2, minmax(0, 1fr)); }
-        }
-        @media (max-width: 420px) {
-            .toolbar-actions-row { grid-template-columns: 1fr; }
-        }
-    </style>
 </head>
 <body>
 
@@ -395,17 +305,17 @@
                 <tr>
                     <th>STT</th>
                     <th>TRẠNG THÁI</th>
-                    <th style="width:230px; min-width:260px;">KẾT QUẢ SƠ TUYỂN</th>
+                    <th style="width:260px; min-width:260px;">KẾT QUẢ SƠ TUYỂN</th>
                     <th>SỐ CCCD</th>
                     <th>TÊN SINH VIÊN</th>
                     <th>NGÀY SINH</th>
-                    <th style="width:150px; min-width:240px;">NGÀNH</th>
+                    <th style="width:240px; min-width:240px;">NGÀNH</th>
                     <th>KHÓA</th>
                     <th>ĐỐI TƯỢNG ƯU TIÊN</th>
                     <th>KHU VỰC ƯU TIÊN</th>
                     <th>ĐỐI TƯỢNG ĐẦU VÀO</th>
                     <th>NĂM XÉT TUYỂN</th>
-                    <th style="width:150px; min-width:200px;">HỆ ĐÀO TẠO</th>
+                    <th style="width:200px; min-width:200px;">HỆ ĐÀO TẠO</th>
                     <th>HÌNH THỨC ĐÀO TẠO</th>
                     <th>LINK HỒ SƠ</th>
                     <th>PHIẾU ĐĂNG KÝ</th>
