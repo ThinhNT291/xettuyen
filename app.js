@@ -544,6 +544,15 @@ function computeAdmissionCore(input) {
 }
 
 // Wrapper cũ: đọc từ DOM (form nhập tay), giữ NGUYÊN hành vi/giao diện traffic-light-box như trước.
+// ĐÃ VÁ LỖI "kẹt Analyzing...": trước đây nếu DICT_HO_SO (data_config.js) có 1 id không khớp checkbox nào
+// trong DOM (vd id đã bị xóa khỏi form nhưng quên xóa trong DICT_HO_SO), document.getElementById(...).checked
+// ném TypeError ngay giữa hàm — đúng lúc box đã lỡ hiện ra (display:flex) nhưng chưa kịp ghi đè chữ
+// "Analyzing..." mặc định trong HTML -> kẹt vĩnh viễn, không có thông báo lỗi nào cho biết vì sao.
+// Vá theo 2 lớp:
+//   1) isDocChecked không còn tự crash khi thiếu checkbox — coi như "chưa tick" (false) và ghi cảnh báo
+//      console.warn để dễ phát hiện lệch dữ liệu, KHÔNG làm vỡ luồng tính toán.
+//   2) Toàn bộ phần tính toán được bọc try/catch — nếu vẫn có lỗi phát sinh khác, box hiện thông báo lỗi rõ
+//      ràng ("Không tính được kết quả...") thay vì treo im lặng ở "Analyzing...".
 function autoCheckAdmission() {
     const nganh = document.getElementById('nganh').value;
     const doiTuongDauVao = document.getElementById('doituongdauvao').value;
@@ -552,26 +561,39 @@ function autoCheckAdmission() {
     if (!nganh || !doiTuongDauVao) { box.style.display = 'none'; return; }
     box.style.display = 'flex';
 
-    const result = computeAdmissionCore({
-        nganh, doiTuongDauVao,
-        isDocChecked: (doc) => document.getElementById(doc.id).checked,
-        khuVucUuTien: document.getElementById('khuvucuutien').value,
-        doiTuongUuTien: document.getElementById('doituonguutien').value,
-        getScore: (fieldId) => getVal(fieldId),
-        he4: getVal('diem_tb_he4'), he10: getVal('diem_tb_he10')
-    });
-    if (!result) { box.style.display = 'none'; return; }
-
     const titleEl = document.getElementById('tl-title');
     const hsDescEl = document.getElementById('tl-hs-desc');
     const diemDescEl = document.getElementById('tl-diem-desc');
     const iconEl = document.getElementById('tl-icon');
 
-    hsDescEl.innerHTML = result.hsMsg; hsDescEl.style.color = result.hsColor;
-    diemDescEl.innerHTML = `📊 Kết quả điểm: ${result.diemMsg}`;
+    try {
+        const result = computeAdmissionCore({
+            nganh, doiTuongDauVao,
+            isDocChecked: (doc) => {
+                const el = document.getElementById(doc.id);
+                if (!el) { console.warn(`[autoCheckAdmission] Thiếu checkbox #${doc.id} ("${doc.name}") trong DOM — kiểm tra lại DICT_HO_SO trong data_config.js.`); return false; }
+                return el.checked;
+            },
+            khuVucUuTien: document.getElementById('khuvucuutien').value,
+            doiTuongUuTien: document.getElementById('doituonguutien').value,
+            getScore: (fieldId) => getVal(fieldId),
+            he4: getVal('diem_tb_he4'), he10: getVal('diem_tb_he10')
+        });
+        if (!result) { box.style.display = 'none'; return; }
 
-    box.style.backgroundColor = result.boxBg; box.style.borderColor = result.boxBorder;
-    iconEl.innerHTML = result.icon; titleEl.innerHTML = result.title; titleEl.style.color = result.titleColor;
+        hsDescEl.innerHTML = result.hsMsg; hsDescEl.style.color = result.hsColor;
+        diemDescEl.innerHTML = `📊 Kết quả điểm: ${result.diemMsg}`;
+
+        box.style.backgroundColor = result.boxBg; box.style.borderColor = result.boxBorder;
+        iconEl.innerHTML = result.icon; titleEl.innerHTML = result.title; titleEl.style.color = result.titleColor;
+    } catch (e) {
+        console.error("[autoCheckAdmission] Lỗi khi tính kết quả sơ tuyển:", e);
+        box.style.backgroundColor = '#f8d7da'; box.style.borderColor = '#f5c6cb';
+        iconEl.innerHTML = '⚠️';
+        titleEl.innerHTML = "KHÔNG TÍNH ĐƯỢC KẾT QUẢ"; titleEl.style.color = '#721c24';
+        hsDescEl.innerHTML = "Có lỗi dữ liệu khi tính sơ tuyển — vui lòng báo kỹ thuật (xem Console: F12) thay vì kẹt màn hình."; hsDescEl.style.color = '#721c24';
+        diemDescEl.innerHTML = "";
+    }
 }
 
 // Hàm MỚI: tính kết quả xét duyệt 2 pha cho 1 HÀNG DỮ LIỆU ĐÃ LƯU (row trong dataList),
