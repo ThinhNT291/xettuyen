@@ -302,7 +302,7 @@ window.addEventListener('DOMContentLoaded', () => {
 //   tác, bấm 1 cái để làm mới thủ công, không mất dữ liệu, không cần tải lại trang.
 // ==========================================
 const IDLE_CONFIG = {
-    IDLE_TIMEOUT_MS: 30 * 60 * 1800,        // 30 phút rảnh tay -> tự đăng xuất (theo chốt của bạn)
+    IDLE_TIMEOUT_MS: 10 * 60 * 1000,        // 10 phút rảnh tay -> tự đăng xuất (theo chốt của bạn)
     RENEW_BEFORE_EXPIRY_MS: 5 * 60 * 1000,  // còn 5 phút hết hạn token -> thử làm mới ngầm
     WATCHER_INTERVAL_MS: 30 * 1000,         // tick mỗi 30 giây
     ACTIVITY_THROTTLE_MS: 8 * 1000,         // throttle ghi nhận hoạt động (đỡ tốn, nằm trong khung 5-10s)
@@ -358,7 +358,7 @@ function forceLogoutDueToIdle() {
     updateAccountLabel();
     const gateLabel = document.getElementById('gate-account-label');
     if (gateLabel) {
-        gateLabel.innerText = "⏱️ Phiên làm việc quá hạn do không thao tác quá lâu, vui lòng đăng nhập lại.";
+        gateLabel.innerText = "⏱️ Phiên làm việc quá hạn do không thao tác quá 10 phút, vui lòng đăng nhập lại.";
         gateLabel.style.color = "#d32f2f";
     }
 }
@@ -1115,8 +1115,17 @@ function hsBuildChecklistTable(pairs) {
 // báo Đầy đủ. ĐÃ BỎ bảng hard-code đó — giờ lấy thẳng danh sách tiên quyết từ DICT_HO_SO.tien_quyet
 // (đúng 1 nguồn duy nhất, dùng chung với computeAdmissionCore()) ngay tại nơi sử dụng bên dưới,
 // nên modal/bảng danh sách và live box KHÔNG THỂ lệch nhau nữa.
-// 4 mục hồ sơ CHUNG luôn hiện với mọi đối tượng đầu vào (đúng khối "doc-chk-common" trên form).
-const HOSO_CHUNG_LABELS = ["Phiếu đăng ký dự tuyển", "Sơ yếu lý lịch", "Bản sao ID", "Ảnh thẻ"];
+//
+// ĐÃ BỎ TIẾP: hằng HOSO_CHUNG_LABELS (bản nhãn tay, không dùng ở đâu cả — dead code) và 2 object tay
+// hoSoChungPairs/hoSoTienQuyetAll từng nằm trong openHoSoDetailModal() bên dưới (label Title-Case tự
+// gõ, VÍ DỤ "Bản sao bằng trung cấp trước 2022" chữ thường — lệch hoa/thường với DICT_HO_SO.name
+// "Bản sao Bằng Trung cấp trước 2022" -> tra cứu hoSoTienQuyetAll[label] ra undefined, checklist
+// hiện ô trống cho gần như mọi hồ sơ tiên quyết). Giờ openHoSoDetailModal() lấy nhãn + giá trị TRỰC
+// TIẾP từ DICT_HO_SO.chung/.tien_quyet (doc.name làm nhãn hiển thị, doc.name.toUpperCase() làm key
+// đọc row) — giống hệt cách computeAdmissionCore()/computeAdmissionResultForRow() đang đọc (dòng
+// 470, 472, 607). Từ nay CHỈ CÓ 1 nguồn nhãn hồ sơ duy nhất trong toàn app: DICT_HO_SO ở
+// data_config.js. Đổi/thêm loại hồ sơ, đổi tên hiển thị -> chỉ cần sửa data_config.js, không cần
+// đụng file này nữa (miễn KHÔNG đổi "name" của mục đã có dữ liệu cũ lưu trên Sheet).
 
 function openHoSoDetailModal(index) {
     const row = dataList[index];
@@ -1143,30 +1152,26 @@ function openHoSoDetailModal(index) {
 
     const doiTuongDauVao = row["ĐỐI TƯỢNG ĐẦU VÀO"] || "";
 
-    // Hồ sơ CHUNG (luôn hiện) — giữ đúng thứ tự/nhãn cũ.
-    const hoSoChungPairs = [
-        ["Phiếu đăng ký dự tuyển", row["PHIẾU ĐĂNG KÝ DỰ TUYỂN"]], ["Sơ yếu lý lịch", row["SƠ YẾU LÝ LỊCH"]],
-        ["Bản sao ID", row["BẢN SAO ID"]], ["Ảnh thẻ", row["ẢNH THẺ"]]
-    ];
-    // Toàn bộ hồ sơ TIÊN QUYẾT có thể có (map nhãn -> giá trị), rồi lọc lại theo đúng
-    // đối tượng đầu vào của hồ sơ này qua HOSO_TIENQUYET_LABELS_BY_DOITUONG.
-    const hoSoTienQuyetAll = {
-        "Bản sao bằng THPT/Giấy báo điểm": row["BẢN SAO BẰNG THPT/GIẤY BÁO ĐIỂM"], "Bản sao học bạ THPT": row["BẢN SAO HỌC BẠ THPT"],
-        "Bản sao bằng trung cấp": row["BẢN SAO BẰNG TRUNG CẤP"], "Bảng điểm trung cấp": row["BẢNG ĐIỂM TRUNG CẤP"],
-        "Bằng THPT/GCN đủ KL KTVH THPT": row["BẰNG THPT/GCN ĐỦ KL KTVH THPT"],
-        "Bản sao bằng trung cấp trước 2022": row["BẢN SAO BẰNG TRUNG CẤP TRƯỚC 2022"], "Bảng điểm trung cấp trước 2022": row["BẢNG ĐIỂM TRUNG CẤP TRƯỚC 2022"],
-        "GCN hoàn thành CT GDPT": row["GCN HOÀN THÀNH CT GDPT"],
-        "Bằng cao đẳng": row["BẰNG CAO ĐẲNG"], "Bảng điểm cao đẳng": row["BẢNG ĐIỂM CAO ĐẲNG"],
-        "Bằng đại học": row["BẰNG ĐẠI HỌC"], "Bảng điểm đại học": row["BẢNG ĐIỂM ĐẠI HỌC"]
-    };
-    // Lấy đúng 1 nguồn duy nhất DICT_HO_SO.tien_quyet[doiTuongDauVao] — CÙNG nguồn mà
-    // computeAdmissionCore()/autoCheckAdmission() (live box) đang dùng để tính missingTienQuyet.
-    const tienQuyetLabels = (DICT_HO_SO.tien_quyet[doiTuongDauVao] || []).map(doc => doc.name);
-    const hoSoTienQuyetPairs = tienQuyetLabels.map(label => [label, hoSoTienQuyetAll[label]]);
-    // Không lọc được đối tượng đầu vào (hồ sơ thiếu/lỗi dữ liệu) → hiện hết để không giấu mất thông tin đã có.
-    const hoSoPairs = tienQuyetLabels.length > 0
+    // Hồ sơ CHUNG (luôn hiện) — lấy TRỰC TIẾP từ DICT_HO_SO.chung, không còn nhãn tay nào ở đây nữa.
+    // doc.name = nhãn hiển thị, doc.name.toUpperCase() = key đọc trong row — đúng quy ước addRow()
+    // đang dùng khi lưu (dòng ~997) và computeAdmissionCore() đang dùng khi tính (dòng 470).
+    const hoSoChungPairs = DICT_HO_SO.chung.map(doc => [doc.name, row[doc.name.toUpperCase()]]);
+
+    // Toàn bộ hồ sơ TIÊN QUYẾT của đúng đối tượng đầu vào — lấy TRỰC TIẾP từ DICT_HO_SO.tien_quyet,
+    // CÙNG 1 nguồn mà computeAdmissionCore()/autoCheckAdmission() (live box) đang dùng để tính
+    // missingTienQuyet (dòng 471-472). Không còn object hoSoTienQuyetAll hard-code song song nữa
+    // -> modal/bảng danh sách/live box đọc chung 1 danh sách nhãn, không thể lệch nhau được nữa.
+    const tienQuyetDocs = DICT_HO_SO.tien_quyet[doiTuongDauVao] || [];
+    const hoSoTienQuyetPairs = tienQuyetDocs.map(doc => [doc.name, row[doc.name.toUpperCase()]]);
+
+    // Không xác định được đối tượng đầu vào (hồ sơ thiếu/lỗi dữ liệu) → gộp TOÀN BỘ hồ sơ tiên quyết
+    // có thể có của MỌI đối tượng (dedupe theo id) để không giấu mất thông tin đã lưu, thay vì chỉ
+    // hiện đúng 1 đối tượng như trường hợp bình thường.
+    const hoSoPairs = tienQuyetDocs.length > 0
         ? [...hoSoChungPairs, ...hoSoTienQuyetPairs]
-        : [...hoSoChungPairs, ...Object.entries(hoSoTienQuyetAll).map(([l, v]) => [l, v])];
+        : [...hoSoChungPairs, ...Object.values(DICT_HO_SO.tien_quyet).flat()
+            .filter((doc, i, arr) => arr.findIndex(d => d.id === doc.id) === i)
+            .map(doc => [doc.name, row[doc.name.toUpperCase()]])];
 
     // Khối điểm: THPT dùng 10 môn thi + Điểm cộng (đúng khối #score-thpt-group, và Điểm cộng luôn
     // hiện độc lập trên form với mọi đối tượng); các đối tượng còn lại (CĐ/ĐH/TC/THN...) dùng
@@ -2102,7 +2107,7 @@ async function processCCCDImage(input) {
                     if (hetHan) {
                         statusText.innerText = `❌ Giấy tờ hết hiệu lực (hạn: ${hanSuDung}) — không thể sử dụng.`;
                         statusText.style.color = "#d32f2f";
-                        showAlert(`${loaiGiayTo === "hochieu" ? "Hộ chiếu" : "CCCD"} này đã HẾT HIỆU LỰC từ ngày ${hanSuDung}.\n\nVui lòng dùng giấy tờ còn hiệu lực.`, "⚠️ GIẤY TỜ HẾT HIỆU LỰC", true);
+                        showAlert(`${loaiGiayTo === "hochieu" ? "Hộ chiếu" : "CCCD"} này đã HẾT HIỆU LỰC từ ngày ${hanSuDung}.\n\nVui lòng dùng giấy tờ còn hiệu lực, hệ thống sẽ không tự động điền dữ liệu từ ảnh này.`, "⚠️ GIẤY TỜ HẾT HIỆU LỰC", true);
                         input.value = "";
                         return;
                     }
