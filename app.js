@@ -78,7 +78,7 @@ function updateAppGate() {
 function updateAccountLabel() {
     const label = document.getElementById('current-account-label');
     const gateLabel = document.getElementById('gate-account-label');
-    const signoutBtn = document.getElementById('btnSignOut');
+    const menuWrap = document.getElementById('accountMenuWrap');
     const loggedIn = isLoggedIn();
 
     if (label) {
@@ -93,10 +93,29 @@ function updateAccountLabel() {
     if (gateLabel && !loggedIn) {
         gateLabel.innerText = "";
     }
-    if (signoutBtn) signoutBtn.style.display = loggedIn ? '' : 'none';
+    if (menuWrap) menuWrap.style.display = loggedIn ? '' : 'none';
+    if (!loggedIn) closeAccountMenu();
 
     updateAppGate();
 }
+
+// Menu tài khoản: bấm vào tên -> xổ dropdown chỉ có "Log Out". Bấm ra ngoài -> tự đóng.
+function toggleAccountMenu(e) {
+    if (e) e.stopPropagation();
+    const dropdown = document.getElementById('accountMenuDropdown');
+    if (!dropdown) return;
+    dropdown.style.display = (dropdown.style.display === 'block') ? 'none' : 'block';
+}
+
+function closeAccountMenu() {
+    const dropdown = document.getElementById('accountMenuDropdown');
+    if (dropdown) dropdown.style.display = 'none';
+}
+
+document.addEventListener('click', (e) => {
+    const menuWrap = document.getElementById('accountMenuWrap');
+    if (menuWrap && !menuWrap.contains(e.target)) closeAccountMenu();
+});
 
 function clearLoginState() {
     currentIdToken = null;
@@ -114,6 +133,7 @@ function clearLoginState() {
 // Đăng xuất: xoá phiên, tắt auto-select của Google để không tự đăng nhập lại account cũ ngay lập tức.
 function signOutUser() {
     clearLoginState();
+    closeAccountMenu();
     try {
         if (window.google && google.accounts && google.accounts.id) {
             google.accounts.id.disableAutoSelect();
@@ -758,7 +778,7 @@ function ensureHoSoDetailModal() {
 #hoSoDetailModal .hs-section-title { font-weight:bold; margin:12px 0 5px; color:#333; }
 #hoSoDetailModal .hs-section-title:first-child { margin-top:0; }
 #hoSoDetailModal .hs-table-wrap { display:flex; justify-content:center; width:100%; overflow-x:auto; }
-#hoSoDetailModal table.hs-table { width:auto; max-width:100%; table-layout:fixed; border-collapse:collapse; background:#fafaf8; margin:0 auto; }
+#hoSoDetailModal table.hs-table { width:auto; min-width:0; max-width:100%; table-layout:fixed; border-collapse:collapse; background:#fafaf8; margin:0 auto; }
 #hoSoDetailModal table.hs-table th, #hoSoDetailModal table.hs-table td { border:1px solid #ddd; padding:4px 9px; text-align:left; vertical-align:top; font-size:12.5px; word-break:break-word; overflow-wrap:break-word; }
 #hoSoDetailModal table.hs-table th { background:#f2f2ee; font-weight:600; color:#333; white-space:normal; width:118px; }
 #hoSoDetailModal table.hs-table td { width:172px; }
