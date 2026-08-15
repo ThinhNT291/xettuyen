@@ -40,10 +40,13 @@ const DICT_NGANH = {
 
 // ĐÃ CẬP NHẬT: RÚT PHIẾU ĐK KHỎI CHUNG, CHO VÀO TIÊN QUYẾT CỦA MỌI ĐỐI TƯỢNG
 const DICT_HO_SO = {
+    // ĐÃ BỎ "doc_khaisinh" (Bản sao Giấy khai sinh) khỏi danh sách "chung": checkbox này không còn tồn tại
+    // trong index.html (form chỉ còn 4 ô: doc_phieu_dk, doc_syll, doc_cccd, doc_anhthe). Trước đây để sót
+    // entry này khiến document.getElementById('doc_khaisinh') trả về null -> autoCheckAdmission() ném lỗi
+    // TypeError ngay giữa chừng -> traffic-light-box bị kẹt mãi ở chữ "Analyzing..." mặc định.
     chung: [
         { id: "doc_syll", name: "Sơ yếu lý lịch" },
         { id: "doc_cccd", name: "Bản sao CCCD" }, 
-        { id: "doc_khaisinh", name: "Bản sao Giấy khai sinh" },
         { id: "doc_anhthe", name: "Ảnh thẻ" }
     ],
     tien_quyet: {
