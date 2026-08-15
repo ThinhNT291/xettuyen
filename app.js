@@ -684,6 +684,9 @@ function renderTable() {
         const isUp = row["TRẠNG THÁI ĐẨY"] === "Uploaded";
         const actionText = row["_Action"] === "UPDATE" ? '<span style="color:#f57c00;font-weight:bold;">[UPDATE]</span> ' : '';
         const tr = document.createElement('tr'); if (isUp) tr.className = "row-uploaded";
+        tr.style.cursor = "pointer";
+        // Click đúp vào dòng hồ sơ (trừ khi bấm đúng nút Sửa/Xóa/link bên trong) -> bật popup xem chi tiết đầy đủ
+        tr.ondblclick = (e) => { if (e.target.closest('button') || e.target.closest('a')) return; openHoSoDetailModal(index); };
         
         // Đã cập nhật BẢN SAO ID vào bảng preview của Web1
         tr.innerHTML = `<td>${row["STT"]}</td><td class="${isUp ? 'status-done' : 'status-pending'}">${row["TRẠNG THÁI ĐẨY"]}</td><td><b>${actionText}${row["CĂN CƯỚC"] || row["SỐ CCCD"]}</b></td><td>${row["TÊN SINH VIÊN"]}</td><td>${row["NGÀY SINH"]}</td><td>${row["NGÀNH"]}</td><td>${row["KHÓA"]}</td><td>${row["ĐỐI TƯỢNG ƯU TIÊN"]}</td><td>${row["KHU VỰC ƯU TIÊN"]}</td><td>${row["ĐỐI TƯỢNG ĐẦU VÀO"]}</td><td>${row["NĂM XÉT TUYỂN"]}</td><td>${row["HỆ ĐÀO TẠO"]}</td><td>${row["HÌNH THỨC ĐÀO TẠO"]}</td>
@@ -699,6 +702,158 @@ function renderTable() {
     if(sb) sb.innerText = `Tổng số ${dataList.length} hồ sơ (Đang có ${pendingCount} hồ sơ chưa đồng bộ).`;
 
     persistDataList();
+}
+
+// ==========================================
+// POPUP XEM CHI TIẾT ĐẦY ĐỦ 1 HỒ SƠ (click đúp vào dòng trong bảng danh sách)
+// Gọn nhẹ, chữ đen, nền nhạt, khung điểm & hồ sơ kẻ bảng. Có nút Sửa/Xóa logic giống nút cuối dòng.
+// ==========================================
+function ensureHoSoDetailModal() {
+    if (document.getElementById('hoSoDetailModal')) return;
+
+    if (!document.getElementById('hoSoDetailStyle')) {
+        const style = document.createElement('style');
+        style.id = 'hoSoDetailStyle';
+        style.textContent = `
+#hoSoDetailModal { display:none; position:fixed; top:0; left:0; width:100%; height:100%;
+    background:rgba(0,0,0,0.35); z-index:10020; align-items:center; justify-content:center; }
+#hoSoDetailModal .hs-box { background:#fdfdfb; color:#222; width:min(760px, 94vw); max-height:88vh;
+    overflow-y:auto; border-radius:6px; border:1px solid #ccc; box-shadow:0 4px 18px rgba(0,0,0,0.25); }
+#hoSoDetailModal .hs-header { display:flex; justify-content:space-between; align-items:center;
+    background:#f0f0ec; color:#222; padding:12px 16px; border-bottom:1px solid #ddd;
+    border-radius:6px 6px 0 0; position:sticky; top:0; }
+#hoSoDetailModal .hs-header b { font-size:15px; }
+#hoSoDetailModal .hs-close-x { cursor:pointer; font-size:18px; color:#555; background:none; border:none; line-height:1; }
+#hoSoDetailModal .hs-body { padding:14px 16px; font-size:13px; }
+#hoSoDetailModal .hs-section-title { font-weight:bold; margin:14px 0 6px; color:#333; }
+#hoSoDetailModal .hs-section-title:first-child { margin-top:0; }
+#hoSoDetailModal table.hs-table { width:100%; border-collapse:collapse; background:#fafaf8; }
+#hoSoDetailModal table.hs-table th, #hoSoDetailModal table.hs-table td { border:1px solid #ddd; padding:5px 8px; text-align:left; vertical-align:top; }
+#hoSoDetailModal table.hs-table th { width:26%; background:#f2f2ee; font-weight:600; color:#333; white-space:nowrap; }
+#hoSoDetailModal table.hs-table td.hs-tick-true { text-align:center; color:#222; font-weight:bold; }
+#hoSoDetailModal table.hs-table td.hs-tick-false { text-align:center; color:#666; }
+#hoSoDetailModal .hs-footer { display:flex; justify-content:flex-end; gap:8px; padding:12px 16px;
+    border-top:1px solid #ddd; background:#f7f7f4; border-radius:0 0 6px 6px; position:sticky; bottom:0; }
+#hoSoDetailModal .hs-btn { padding:7px 14px; border-radius:4px; border:1px solid #bbb; background:#fff; color:#222; cursor:pointer; font-size:13px; }
+#hoSoDetailModal .hs-btn:hover { background:#eee; }
+#hoSoDetailModal .hs-btn:disabled { opacity:0.5; cursor:not-allowed; }
+#hoSoDetailModal .hs-btn-danger { border-color:#c9a0a0; }
+#hoSoDetailModal .hs-note { color:#777; font-style:italic; font-size:12px; }
+`;
+        document.head.appendChild(style);
+    }
+
+    const modal = document.createElement('div');
+    modal.id = 'hoSoDetailModal';
+    modal.innerHTML = `
+        <div class="hs-box">
+            <div class="hs-header"><b id="hsDetailTitle">Chi tiết hồ sơ</b><button type="button" class="hs-close-x" id="hsDetailCloseX">✕</button></div>
+            <div class="hs-body" id="hsDetailBody"></div>
+            <div class="hs-footer" id="hsDetailFooter"></div>
+        </div>`;
+    document.body.appendChild(modal);
+
+    document.getElementById('hsDetailCloseX').onclick = closeHoSoDetailModal;
+    modal.addEventListener('mousedown', (e) => { if (e.target === modal) closeHoSoDetailModal(); });
+}
+
+function closeHoSoDetailModal() {
+    const modal = document.getElementById('hoSoDetailModal');
+    if (modal) modal.style.display = 'none';
+}
+
+// Dựng 1 bảng kẻ ô dạng "nhãn : giá trị", mỗi hàng 2 cặp label/value cho gọn.
+function hsBuildPairsTable(pairs) {
+    let rows = '';
+    for (let i = 0; i < pairs.length; i += 2) {
+        const [l1, v1] = pairs[i];
+        const p2 = pairs[i + 1];
+        rows += `<tr><th>${l1}</th><td>${v1}</td>${p2 ? `<th>${p2[0]}</th><td>${p2[1]}</td>` : `<th></th><td></td>`}</tr>`;
+    }
+    return `<table class="hs-table">${rows}</table>`;
+}
+
+// Dựng bảng checklist hồ sơ (label + ✔/✘), mỗi hàng 2 cặp cho gọn.
+function hsBuildChecklistTable(pairs) {
+    const tickCell = (val) => val === "TRUE" ? `<td class="hs-tick-true">✔</td>` : (val === "FALSE" ? `<td class="hs-tick-false">✘</td>` : `<td>${val || ""}</td>`);
+    let rows = '';
+    for (let i = 0; i < pairs.length; i += 2) {
+        const [l1, v1] = pairs[i];
+        const p2 = pairs[i + 1];
+        rows += `<tr><th>${l1}</th>${tickCell(v1)}${p2 ? `<th>${p2[0]}</th>${tickCell(p2[1])}` : `<th></th><td></td>`}</tr>`;
+    }
+    return `<table class="hs-table">${rows}</table>`;
+}
+
+function openHoSoDetailModal(index) {
+    const row = dataList[index];
+    if (!row) return;
+    ensureHoSoDetailModal();
+
+    const isUp = row["TRẠNG THÁI ĐẨY"] === "Uploaded";
+    document.getElementById('hsDetailTitle').innerText = `Chi tiết hồ sơ: ${row["TÊN SINH VIÊN"] || ""}`;
+
+    let linkHtml = row["LINK HỒ SƠ"] ? (() => {
+        let l = row["LINK HỒ SƠ"].trim(); if (!l.startsWith("http://") && !l.startsWith("https://")) l = "https://" + l;
+        return `<a href="${l}" target="_blank" style="color:#0288d1;">Mở Folder</a>`;
+    })() : "";
+
+    const chungPairs = [
+        ["Trạng thái", `${row["TRẠNG THÁI ĐẨY"] || ""}`], ["Căn cước", row["CĂN CƯỚC"] || row["SỐ CCCD"] || ""],
+        ["Tên sinh viên", row["TÊN SINH VIÊN"] || ""], ["Ngày sinh", row["NGÀY SINH"] || ""],
+        ["Ngành", row["NGÀNH"] || ""], ["Khóa", row["KHÓA"] || ""],
+        ["Đối tượng ưu tiên", row["ĐỐI TƯỢNG ƯU TIÊN"] || ""], ["Khu vực ưu tiên", row["KHU VỰC ƯU TIÊN"] || ""],
+        ["Đối tượng đầu vào", row["ĐỐI TƯỢNG ĐẦU VÀO"] || ""], ["Năm xét tuyển", row["NĂM XÉT TUYỂN"] || ""],
+        ["Hệ đào tạo", row["HỆ ĐÀO TẠO"] || ""], ["Hình thức đào tạo", row["HÌNH THỨC ĐÀO TẠO"] || ""],
+        ["Giấy tờ ưu tiên", row["GIẤY TỜ ƯU TIÊN"] || ""], ["Link hồ sơ", linkHtml]
+    ];
+
+    const hoSoPairs = [
+        ["Phiếu đăng ký dự tuyển", row["PHIẾU ĐĂNG KÝ DỰ TUYỂN"]], ["Sơ yếu lý lịch", row["SƠ YẾU LÝ LỊCH"]],
+        ["Bản sao ID", row["BẢN SAO ID"]], ["Ảnh thẻ", row["ẢNH THẺ"]],
+        ["Bản sao bằng THPT/Giấy báo điểm", row["BẢN SAO BẰNG THPT/GIẤY BÁO ĐIỂM"]], ["Bản sao học bạ THPT", row["BẢN SAO HỌC BẠ THPT"]],
+        ["Bản sao bằng trung cấp", row["BẢN SAO BẰNG TRUNG CẤP"]], ["Bảng điểm trung cấp", row["BẢNG ĐIỂM TRUNG CẤP"]],
+        ["Bằng THPT/GCN đủ KL KTVH THPT", row["BẰNG THPT/GCN ĐỦ KL KTVH THPT"]], ["Bản sao bằng trung cấp trước 2022", row["BẢN SAO BẰNG TRUNG CẤP TRƯỚC 2022"]],
+        ["Bảng điểm trung cấp trước 2022", row["BẢNG ĐIỂM TRUNG CẤP TRƯỚC 2022"]], ["GCN hoàn thành CT GDPT", row["GCN HOÀN THÀNH CT GDPT"]],
+        ["Bằng cao đẳng", row["BẰNG CAO ĐẲNG"]], ["Bảng điểm cao đẳng", row["BẢNG ĐIỂM CAO ĐẲNG"]],
+        ["Bằng đại học", row["BẰNG ĐẠI HỌC"]], ["Bảng điểm đại học", row["BẢNG ĐIỂM ĐẠI HỌC"]]
+    ];
+
+    const diemPairs = [
+        ["Toán", row["TOÁN"] || ""], ["Vật lí", row["VẬT LÍ"] || ""],
+        ["Hóa học", row["HÓA HỌC"] || ""], ["Sinh học", row["SINH HỌC"] || ""],
+        ["Ngữ văn", row["NGỮ VĂN"] || ""], ["Lịch sử", row["LỊCH SỬ"] || ""],
+        ["Địa lý", row["ĐỊA LÝ"] || ""], ["Tiếng Anh", row["TIẾNG ANH"] || ""],
+        ["Tiếng Trung", row["TIẾNG TRUNG"] || ""], ["Tin học", row["TIN HỌC"] || ""],
+        ["GDKTPL", row["GDKTPL"] || ""], ["Điểm cộng", row["ĐIỂM CỘNG"] || ""],
+        ["Điểm TB toàn khóa hệ 4", row["ĐIỂM TB TOÀN KHÓA HỆ 4"] || ""], ["Điểm TB toàn khóa hệ 10", row["ĐIỂM TB TOÀN KHÓA HỆ 10"] || ""]
+    ];
+
+    document.getElementById('hsDetailBody').innerHTML = `
+        <div class="hs-section-title">📄 Thông tin chung</div>
+        ${hsBuildPairsTable(chungPairs)}
+        <div class="hs-section-title">📋 Hồ sơ</div>
+        ${hsBuildChecklistTable(hoSoPairs)}
+        <div class="hs-section-title">🧮 Khung điểm</div>
+        ${hsBuildPairsTable(diemPairs)}
+    `;
+
+    const disableEdit = editingIndex !== -1;
+    document.getElementById('hsDetailFooter').innerHTML = !isUp
+        ? `<button type="button" class="hs-btn hs-btn-danger" id="hsBtnDelete" ${disableEdit ? 'disabled' : ''}>🗑️ Xóa</button>
+           <button type="button" class="hs-btn" id="hsBtnEdit" ${disableEdit ? 'disabled' : ''}>✏️ Sửa</button>
+           <button type="button" class="hs-btn" id="hsBtnClose">Đóng</button>`
+        : `<span class="hs-note">Hồ sơ đã đồng bộ lên hệ thống — không thể sửa/xóa tại đây.</span>
+           <button type="button" class="hs-btn" id="hsBtnClose">Đóng</button>`;
+
+    document.getElementById('hsBtnClose').onclick = closeHoSoDetailModal;
+    if (!isUp) {
+        document.getElementById('hsBtnEdit').onclick = () => { closeHoSoDetailModal(); editRow(index); };
+        // Logic Xóa giống hệt nút 🗑️ cuối dòng hồ sơ (showConfirm rồi mới xóa khỏi danh sách + render lại).
+        document.getElementById('hsBtnDelete').onclick = () => { closeHoSoDetailModal(); deleteRow(index); };
+    }
+
+    document.getElementById('hoSoDetailModal').style.display = 'flex';
 }
 
 function exportToExcel() {
@@ -1295,12 +1450,15 @@ window.addEventListener('keydown', function(event) {
         // Đóng đúng lớp modal đang hiển thị TRÊN CÙNG (theo z-index giảm dần) — mỗi lần ESC chỉ đóng 1 lớp,
         // tránh trường hợp đóng chồng nhiều modal cùng lúc (vd: customModal báo lỗi mở đè lên importExcelModal).
         const customModal = document.getElementById('customModal');           // z-index 10050
+        const hoSoDetailModal = document.getElementById('hoSoDetailModal');   // z-index 10020
         const importExcelModal = document.getElementById('importExcelModal'); // z-index 10010
         const searchCandidateModal = document.getElementById('searchCandidateModal'); // z-index 10000
         const lookupModal = document.getElementById('lookupModal');           // z-index mặc định (thấp nhất)
 
         if (customModal && customModal.style.display === 'flex') {
             customModal.style.display = 'none';
+        } else if (hoSoDetailModal && hoSoDetailModal.style.display === 'flex') {
+            closeHoSoDetailModal();
         } else if (importExcelModal && importExcelModal.style.display === 'flex') {
             closeImportExcelModal();
         } else if (searchCandidateModal && searchCandidateModal.style.display === 'flex') {
