@@ -758,10 +758,10 @@ function ensureHoSoDetailModal() {
 #hoSoDetailModal .hs-section-title { font-weight:bold; margin:12px 0 5px; color:#333; }
 #hoSoDetailModal .hs-section-title:first-child { margin-top:0; }
 #hoSoDetailModal .hs-table-wrap { display:flex; justify-content:center; width:100%; overflow-x:auto; }
-#hoSoDetailModal table.hs-table { width:auto; max-width:100%; border-collapse:collapse; background:#fafaf8; margin:0 auto; }
-#hoSoDetailModal table.hs-table th, #hoSoDetailModal table.hs-table td { border:1px solid #ddd; padding:4px 9px; text-align:left; vertical-align:top; font-size:12.5px; }
-#hoSoDetailModal table.hs-table th { background:#f2f2ee; font-weight:600; color:#333; white-space:nowrap; }
-#hoSoDetailModal table.hs-table td { max-width:220px; }
+#hoSoDetailModal table.hs-table { width:auto; max-width:100%; table-layout:fixed; border-collapse:collapse; background:#fafaf8; margin:0 auto; }
+#hoSoDetailModal table.hs-table th, #hoSoDetailModal table.hs-table td { border:1px solid #ddd; padding:4px 9px; text-align:left; vertical-align:top; font-size:12.5px; word-break:break-word; overflow-wrap:break-word; }
+#hoSoDetailModal table.hs-table th { background:#f2f2ee; font-weight:600; color:#333; white-space:normal; width:118px; }
+#hoSoDetailModal table.hs-table td { width:172px; }
 #hoSoDetailModal table.hs-table td.hs-tick-true { text-align:center; color:#222; font-weight:bold; }
 #hoSoDetailModal table.hs-table td.hs-tick-false { text-align:center; color:#666; }
 #hoSoDetailModal .hs-footer { display:flex; justify-content:flex-end; gap:8px; padding:12px 16px;
@@ -1036,6 +1036,23 @@ function findUnmatchedHeaders(fileHeaders, expectedHeaders) {
     return unmatched;
 }
 
+// Lấy giá trị 1 trường trong object item (key = đúng tên tiêu đề gốc trong file, có thể lệch alias
+// so với tên chuẩn hệ thống) — dùng cùng bộ alias với findColIndexByNameJs để lấy đúng CĂN CƯỚC/NGÀNH
+// dù file dùng tên cột nào (SỐ CCCD, CCCD, CĂN CƯỚC...).
+function getFieldValueByAlias(obj, targetKey) {
+    const keys = Object.keys(obj);
+    const idx = findColIndexByNameJs(keys, targetKey);
+    return idx !== -1 ? String(obj[keys[idx]] == null ? "" : obj[keys[idx]]).trim() : "";
+}
+
+// Khóa chống trùng CĂN CƯỚC + NGÀNH — CĂN CƯỚC chỉ giữ lại chữ số (đồng bộ cách backend đối chiếu
+// khi INSERT/UPDATE lên sheet trung gian, xem findColIndexByName + payloadCccd trong GAS_trunggian_gs).
+function buildDupKey(cccdRaw, nganhRaw) {
+    const cccd = String(cccdRaw || "").replace(/\D/g, '');
+    const nganh = String(nganhRaw || "").trim().toUpperCase().replace(/\s+/g, ' ');
+    return cccd + "|" + nganh;
+}
+
 async function executeImportExcelUpload() {
     if (!importSelectedFile) return;
 
@@ -1094,55 +1111,75 @@ async function executeImportExcelUpload() {
 
     btn.disabled = false; btn.innerHTML = originalText;
 
-    closeImportExcelModal();
-    showConfirm(`Phát hiện ${items.length} hồ sơ trong file (tiêu đề đã khớp hệ thống, đã tự động bỏ qua dòng mẫu).\n\n👉 Dữ liệu sẽ được chèn THẲNG vào hệ thống, không qua bảng xem trước bên dưới.\n\nBạn có chắc chắn muốn nhập không?`, () => {
-        sendImportItemsToCloud(fileHeaders, items);
-    }, "📂 XÁC NHẬN IMPORT EXCEL");
+    // KHÔNG đẩy thẳng lên sheet trung gian nữa — chỉ nạp vào danh sách (dataList) ở trạng thái "Waiting",
+    // giống hệt như thêm tay. Nhân viên tự kiểm tra lại trong bảng rồi bấm nút "☁️ Đẩy dữ liệu lên hệ
+    // thống" có sẵn bên dưới (dùng chung logic sendToCloud/executeUploadToCloud đã có).
+    addImportedItemsToLocalList(items);
 }
 
-async function sendImportItemsToCloud(fileHeaders, items) {
-    const sb = document.getElementById('statusBar');
-    if (sb) sb.innerText = `⏳ Đang nhập ${items.length} hồ sơ từ file Excel lên hệ thống...`;
+// Chống trùng CĂN CƯỚC + NGÀNH: so với TOÀN BỘ danh sách đang có (đã nhập tay hoặc import trước đó,
+// bất kể đã đẩy lên hệ thống hay chưa) VÀ giữa các dòng trong cùng file vừa chọn. Dòng nào trùng thì bỏ
+// qua (không thêm vào danh sách), các dòng còn lại nạp tiếp nối bên dưới danh sách hiện tại ở trạng thái
+// "Waiting" — CHƯA ghi lên sheet trung gian cho tới khi nhân viên tự bấm "Đẩy dữ liệu lên hệ thống".
+function addImportedItemsToLocalList(items) {
+    const existingKeys = new Set(
+        dataList
+            .map(row => buildDupKey(row["CĂN CƯỚC"] || row["SỐ CCCD"], row["NGÀNH"]))
+            .filter(k => k !== "|")
+    );
+    const seenInBatch = new Set();
+    const uniqueItems = [];
+    const duplicateInfo = [];
 
-    // Đồng bộ với nút "Đẩy dữ liệu lên hệ thống": khóa popup lại bằng nội dung "Đang đồng bộ" cho tới
-    // khi có kết quả thành công/thất bại, không cho đóng giữa chừng.
-    showSyncingModal(`Đang đồng bộ ${items.length} hồ sơ từ file Excel lên hệ thống, vui lòng chờ trong giây lát...\nKhông tắt hay tải lại trang trong lúc này.`);
+    items.forEach(item => {
+        const cccdVal = getFieldValueByAlias(item, "CĂN CƯỚC");
+        const nganhVal = getFieldValueByAlias(item, "NGÀNH");
+        const key = buildDupKey(cccdVal, nganhVal);
+        const isCheckable = key !== "|"; // thiếu cả CCCD lẫn Ngành -> không đủ căn cứ để coi là trùng
 
-    try {
-        const response = await fetch(WEB_APP_URL, {
-            method: "POST",
-            headers: { "Content-Type": "text/plain;charset=utf-8" },
-            // idToken gửi kèm để Apps Script tự xác minh chữ ký + đối chiếu whitelist — chống giả mạo tài khoản.
-            // headers gửi kèm để backend TỰ so khớp lại lần cuối trước khi ghi (phòng trường hợp sheet
-            // trung gian bị đổi cột đúng lúc giữa bước kiểm tra tiêu đề và bước gửi dữ liệu này).
-            body: JSON.stringify({ idToken: currentIdToken, action: "importFromExcel", headers: fileHeaders, items: items })
-        });
-        const result = await response.json();
-        if (result.status === "success") {
-            // Trước đây import Excel chỉ ghi thẳng lên sheet trung gian, KHÔNG hiện trong bảng danh sách
-            // bên dưới. Giờ thêm luôn các hồ sơ vừa import thành công vào danh sách (đánh dấu sẵn
-            // "Uploaded" vì đã đồng bộ xong lên hệ thống, không cần đẩy lại lần nữa).
-            const sttBase = dataList.length;
-            items.forEach((item, idx) => {
-                const importedRow = { ...item };
-                importedRow["STT"] = sttBase + idx + 1;
-                importedRow["TRẠNG THÁI ĐẨY"] = "Uploaded";
-                importedRow["TÀI KHOẢN NHẬP LIỆU"] = currentUserEmail || "(chưa đăng nhập)";
-                dataList.push(importedRow);
-            });
-            renderTable();
-            showAlert(`Đã nhập thành công ${items.length} hồ sơ từ file Excel lên hệ thống!`, "🎉 IMPORT THÀNH CÔNG", false);
-        } else if (result.status === "header_mismatch") {
-            showAlert(`Tiêu đề file KHÔNG khớp với hệ thống (phát hiện lại ở bước cuối) — dữ liệu KHÔNG được đẩy lên.\n\n👉 ${result.message || 'Vui lòng tải lại file mẫu mới nhất và thử lại.'}`, "❌ TIÊU ĐỀ KHÔNG KHỚP", true);
+        if (isCheckable && (existingKeys.has(key) || seenInBatch.has(key))) {
+            const tenVal = getFieldValueByAlias(item, "TÊN SINH VIÊN");
+            duplicateInfo.push(`- ${tenVal || "(không rõ tên)"} — CCCD: ${cccdVal || "?"} — Ngành: ${nganhVal || "?"}`);
         } else {
-            showAlert(`Lỗi trả về từ máy chủ Google:\n👉 ${result.message}`, "❌ LỖI MÁY CHỦ", true);
+            if (isCheckable) seenInBatch.add(key);
+            uniqueItems.push(item);
         }
-    } catch (error) {
-        showAlert(`Không thể kết nối đến máy chủ. Vui lòng kiểm tra lại kết nối mạng của bạn!\n\n👉 Chi tiết lỗi: ${error}`, "❌ LỖI KẾT NỐI MẠNG", true);
-    } finally {
-        const pendingCount = dataList.filter(r => r["TRẠNG THÁI ĐẨY"] === "Waiting").length;
-        if (sb) sb.innerText = `Tổng số ${dataList.length} hồ sơ (Đang có ${pendingCount} hồ sơ chưa đồng bộ).`;
+    });
+
+    if (uniqueItems.length === 0) {
+        showAlert(
+            `Toàn bộ ${items.length} hồ sơ trong file đã có sẵn trong danh sách hiện tại (trùng CĂN CƯỚC + NGÀNH) — không có hồ sơ mới nào được thêm.`,
+            "⚠️ TOÀN BỘ ĐÃ TRÙNG", true
+        );
+        return;
     }
+
+    const sttBase = dataList.length;
+    uniqueItems.forEach((item, idx) => {
+        const importedRow = { ...item };
+        importedRow["STT"] = sttBase + idx + 1;
+        importedRow["TRẠNG THÁI ĐẨY"] = "Waiting";
+        importedRow["TÀI KHOẢN NHẬP LIỆU"] = currentUserEmail || "(chưa đăng nhập)";
+        dataList.push(importedRow);
+    });
+    renderTable();
+
+    const sb = document.getElementById('statusBar');
+    if (sb) {
+        const pendingCount = dataList.filter(r => r["TRẠNG THÁI ĐẨY"] === "Waiting").length;
+        sb.innerText = `Tổng số ${dataList.length} hồ sơ (Đang có ${pendingCount} hồ sơ chưa đồng bộ).`;
+    }
+
+    let msg = `Đã nạp ${uniqueItems.length} hồ sơ từ file Excel vào danh sách bên dưới.`;
+    if (duplicateInfo.length > 0) {
+        msg += `\n\n⚠️ Đã bỏ qua ${duplicateInfo.length} hồ sơ trùng CĂN CƯỚC + NGÀNH với dữ liệu đang có:\n` +
+            duplicateInfo.slice(0, 10).join('\n') +
+            (duplicateInfo.length > 10 ? `\n...và ${duplicateInfo.length - 10} hồ sơ khác` : '');
+    }
+    msg += `\n\n👉 Vui lòng kiểm tra lại dữ liệu trong danh sách để đảm bảo không thiếu sót, sau đó bấm "☁️ Đẩy dữ liệu lên hệ thống" để cập nhật.`;
+
+    closeImportExcelModal();
+    showAlert(msg, "✅ IMPORT THÀNH CÔNG", false);
 }
 
 function clearTable() { 
