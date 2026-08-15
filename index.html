@@ -110,14 +110,19 @@
 <div id="loginGate" style="display:flex; min-height:100vh; align-items:center; justify-content:center; flex-direction:column; gap:16px; background:#f0f2f5; padding:16px; text-align:center; width:100%;">
     <div class="gate-box">
         <h2 class="gate-title">📝 CỔNG NHẬP LIỆU HỒ SƠ TUYỂN SINH</h2>
-        <p style="color:#555; font-size:14px; margin-bottom:20px;">Vui lòng đăng nhập để tiếp tục.</p>
+        <p style="color:#555; font-size:14px; margin-bottom:20px;">Vui lòng đăng nhập bằng tài khoản Google đã được cấp quyền để tiếp tục.</p>
         <div id="g_id_onload"
              data-client_id="311965248456-01ts8h9g6tuj0slob58n8vrfm091c4u7.apps.googleusercontent.com"
              data-callback="handleGoogleLogin"
              data-auto_select="true">
         </div>
-        <div style="display:flex; justify-content:center;">
+        <div style="display:flex; justify-content:center; align-items:center; gap:14px; flex-wrap:wrap;">
             <div class="g_id_signin" data-type="standard" data-size="large" data-shape="pill"></div>
+            <!-- (d) Request Access — y hệt repo2 Web2: cùng client_id Google, cùng backend GAS, chỉ khác endpoint
+                 API_REQUEST_ACCESS (đăng ký quyền cho whitelist "Nhập liệu" thay vì "Thẩm định"). -->
+            <button type="button" id="btnRequestAccess" style="height:40px; box-sizing:border-box; display:inline-flex; align-items:center; justify-content:center; background:none; border:1px solid #999; color:#555; padding:0 18px; border-radius:20px; font-size:14px; font-family:'Google Sans',Roboto,Arial,sans-serif; font-weight:500; line-height:1; cursor:pointer;">
+                🔓 Request access
+            </button>
         </div>
         <div id="gate-account-label" style="font-weight:bold; font-size:13px; margin-top:14px;"></div>
     </div>
@@ -390,6 +395,7 @@
                 <tr>
                     <th>STT</th>
                     <th>TRẠNG THÁI</th>
+                    <th>KẾT QUẢ SƠ TUYỂN</th>
                     <th>SỐ CCCD</th>
                     <th>TÊN SINH VIÊN</th>
                     <th>NGÀY SINH</th>
@@ -447,7 +453,7 @@
     </div>
 <!-- KẾT THÚC BẢNG HIỂN THỊ DỮ LIỆU -->    
 <!-- CHỮ KÝ ĐỂ Ở ĐÂY: NGOÀI THẺ DIV CONTAINER V VÀ NGOÀI MODAL -->
-<div class="copyright">© Liên hệ hỗ trợ: Nguyễn Tiến Thịnh _ 0985-822037</div>
+<div class="copyright">© Liên hệ hỗ trợ: Nguyễn Tiến Thịnh _ 0985-822037 &nbsp;|&nbsp; <span id="btnOpenFeedback" onclick="openFeedbackModal()" style="cursor:pointer; text-decoration:underline; font: inherit; color: inherit;">📩 Gửi phản hồi lỗi trong quá trình sử dụng</span></div>
     
 <!-- KHUNG MODAL THAY THẾ ALERT / CONFIRM CỦA TRÌNH DUYỆT -->
 <div id="customModal" class="modal-overlay" style="display:none; z-index: 10050;">
@@ -455,6 +461,18 @@
         <div id="modalHeader" class="modal-header"></div>
         <div id="modalBody" class="modal-body"></div>
         <div id="modalFooter" class="modal-footer"></div>
+    </div>
+</div>
+
+<!-- (c) KHUNG MODAL: GỬI PHẢN HỒI LỖI TRONG QUÁ TRÌNH SỬ DỤNG — y hệt repo2 Web2 -->
+<div id="feedbackModal" class="modal-overlay" style="display:none; z-index: 10060;">
+    <div class="modal-box" style="width: 90%; max-width: 420px; height: auto;">
+        <div class="modal-header info" style="font-size: 14px;">
+            <span>📩 Gửi phản hồi nếu có lỗi</span>
+            <span style="cursor:pointer; margin-left:auto; color:#ffeb3b;" onclick="closeFeedbackModal()">✖</span>
+        </div>
+        <div id="feedbackBody" class="modal-body" style="padding: 18px 15px;"></div>
+        <div id="feedbackFooter" class="modal-footer" style="padding: 10px 15px; background: #f1f1f1; border-top: 1px solid #ddd; display: flex; justify-content: flex-end; gap: 8px;"></div>
     </div>
 </div>
 
@@ -523,7 +541,7 @@
             </div>
             <input type="file" id="importExcelFileInput" accept=".xlsx,.xls,.csv" style="display:none;" onchange="onImportFileChosen(this)">
 
-            <div class="import-hint">Lưu ý: Không sửa tiêu đề. Dòng đầu tiên ngay sau tiêu đề là <b>dòng mẫu</b>, không được xóa/điền dữ liệu thí sinh.</div>
+            <div class="import-hint">Chấp nhận file Excel (.xlsx, .xls) hoặc CSV chuẩn, đúng cấu trúc tiêu đề của file mẫu. Dòng đầu tiên ngay sau tiêu đề được coi là <b>dòng mẫu/hướng dẫn</b> và sẽ tự động bị bỏ qua, không nhập vào hệ thống.</div>
         </div>
     </div>
 </div>
