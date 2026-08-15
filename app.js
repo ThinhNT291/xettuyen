@@ -51,6 +51,10 @@ let currentUserEmail = "";   // dùng làm định danh ghi log/audit, KHÔNG ph
 let currentUserName = "";    // Họ tên hiển thị (lấy từ claim "name" của Google), chỉ để HIỂN THỊ cho đẹp
 let currentTokenExp = 0;     // epoch giây, lấy từ claim "exp" của token
 let isVerifiedByServer = false; // chỉ true sau khi server xác nhận token hợp lệ + email nằm trong whitelist
+// (d) Request Access — y hệt cơ chế repo2 Web2: cờ đánh dấu lượt bấm Google Sign-In tiếp theo là để XIN QUYỀN,
+// không phải để đăng nhập bình thường. handleGoogleLogin() sẽ kiểm tra cờ này đầu tiên (xem bên dưới).
+let __isRequestAccessFlow = false;
+const API_REQUEST_ACCESS = "https://script.google.com/macros/s/AKfycbxj1dBaUFYXSK_LKeNIhDNdLIl0ZPuoylNf1e9U2tYK_CX-cO1s6rA5NMzlKGsNEe3jcw/exec";
 
 // atob() thuần chỉ decode base64 -> chuỗi byte kiểu Latin-1, trong khi payload JWT là JSON UTF-8.
 // Với tên có dấu tiếng Việt (chuỗi UTF-8 nhiều byte), atob() một mình sẽ làm vỡ font (ra ký tự lạ/mojibake).
@@ -64,6 +68,43 @@ function base64UrlDecodeUtf8(b64url) {
 
 function isLoggedIn() {
     return !!currentIdToken && isVerifiedByServer && (Date.now() / 1000) < currentTokenExp;
+}
+
+// (d) Request Access — bấm nút "🔓 Request access" -> bật cờ -> mở lại hộp thoại chọn tài khoản Google.
+// Lượt chọn tài khoản kế tiếp sẽ được handleGoogleLogin() nhận diện qua cờ này và rẽ sang processAccessRequest()
+// thay vì đăng nhập bình thường (y hệt luồng repo2 Web2).
+document.getElementById('btnRequestAccess')?.addEventListener('click', () => {
+    __isRequestAccessFlow = true;
+    google.accounts.id.prompt();
+});
+
+// Giải mã email từ JWT phía client CHỈ để hiển thị xác nhận trước khi gửi — server vẫn tự xác minh lại
+// token thật khi nhận request. Dùng chung base64UrlDecodeUtf8() đã có sẵn ở trên (an toàn với ký tự UTF-8).
+function decodeJwtEmail(jwt) {
+    try { return JSON.parse(base64UrlDecodeUtf8(jwt.split('.')[1])).email; }
+    catch (e) { return null; }
+}
+
+async function processAccessRequest(idToken) {
+    const email = decodeJwtEmail(idToken) || "(không đọc được email)";
+    showConfirm(
+        `Gửi yêu cầu quyền truy cập bằng tài khoản:\n${email}?`,
+        async () => {
+            try {
+                const resp = await fetch(API_REQUEST_ACCESS, {
+                    method: "POST",
+                    headers: { "Content-Type": "text/plain;charset=utf-8" },
+                    body: JSON.stringify({ idToken })
+                });
+                const result = await resp.json();
+                if (result.status === "success") showAlert("Đã gửi yêu cầu. Vui lòng chờ được cấp quyền.", "✅ Thành công", false);
+                else showAlert(result.message || "Gửi yêu cầu thất bại.", "❌ Lỗi", true);
+            } catch (err) {
+                showAlert("Lỗi kết nối: " + err.message, "❌ Lỗi", true);
+            }
+        },
+        "Xác nhận yêu cầu quyền truy cập"
+    );
 }
 
 // Ẩn/hiện toàn bộ giao diện nhập liệu: chỉ mở khi đã đăng nhập VÀ được server xác nhận whitelist.
@@ -134,6 +175,7 @@ function clearLoginState() {
 function signOutUser() {
     clearLoginState();
     closeAccountMenu();
+    hideRenewBanner();
     try {
         if (window.google && google.accounts && google.accounts.id) {
             google.accounts.id.disableAutoSelect();
@@ -154,6 +196,13 @@ async function verifyLoginWithServer(idToken) {
 }
 
 async function handleGoogleLogin(response) {
+    // (d) Nếu lượt chọn tài khoản này là do bấm "Request access" -> rẽ sang luồng xin quyền,
+    // KHÔNG chạy tiếp luồng đăng nhập bình thường bên dưới.
+    if (__isRequestAccessFlow) {
+        __isRequestAccessFlow = false;
+        processAccessRequest(response.credential);
+        return;
+    }
     // Báo ngay cho người dùng biết trang đang xử lý, tránh cảm giác "im lìm" trong lúc chờ server xác thực.
     const gateLabelLoading = document.getElementById('gate-account-label');
     if (gateLabelLoading) {
@@ -201,6 +250,10 @@ async function handleGoogleLogin(response) {
         sessionStorage.setItem('gg_token_exp', String(currentTokenExp));
         sessionStorage.setItem('gg_verified', '1');
         updateAccountLabel();
+        // Token vừa được cấp mới (đăng nhập lần đầu HOẶC làm mới ngầm qua trySilentRenew) -> coi như vừa có
+        // hoạt động thật + không còn lý do hiện banner "sắp hết hạn" nữa.
+        bumpActivity();
+        hideRenewBanner();
     } catch (e) {
         console.error("Lỗi xử lý đăng nhập Google:", e);
         clearLoginState();
@@ -234,26 +287,189 @@ window.addEventListener('DOMContentLoaded', () => {
     }
 });
 
+// ==========================================
+// (F) TỰ ĐỘNG ĐĂNG XUẤT DO RẢNH TAY + LÀM MỚI TOKEN NGẦM (Web1 — nhập liệu)
+// Web2 (thẩm định) dùng y hệt logic này, chỉ khác hậu tố key lưu trữ ("_w2" thay vì "_w1") để 2 tab
+// mở song song trên cùng máy không đè state của nhau.
+//
+// - Google ID token (JWT) tự nó có hạn cố định ~1h, không có API "gia hạn" trực tiếp -> cần 2 cơ chế
+//   song song: (1) đếm giờ rảnh tay để tự đăng xuất, (2) làm mới token ngầm khi còn đang thao tác, để
+//   không bị văng ra giữa chừng chỉ vì JWT gốc hết hạn dù nhân viên vẫn đang gõ liên tục.
+// - Ngưỡng đã chốt: rảnh tay 10 phút -> tự đăng xuất ÂM THẦM (không đếm ngược cảnh báo trước), chỉ hiện
+//   dòng chữ trên màn hình đăng nhập SAU KHI đã đăng xuất. Còn 5 phút hết hạn token -> thử làm mới ngầm.
+// - Làm mới ngầm của Google không đảm bảo im lặng 100% (trình duyệt chặn cookie bên thứ 3, hoặc nhân
+//   viên từng bấm tắt hộp thoại Google trong phiên) -> khi thất bại, hiện 1 banner nhỏ KHÔNG chặn thao
+//   tác, bấm 1 cái để làm mới thủ công, không mất dữ liệu, không cần tải lại trang.
+// ==========================================
+const IDLE_CONFIG = {
+    IDLE_TIMEOUT_MS: 10 * 60 * 1000,        // 10 phút rảnh tay -> tự đăng xuất (theo chốt của bạn)
+    RENEW_BEFORE_EXPIRY_MS: 5 * 60 * 1000,  // còn 5 phút hết hạn token -> thử làm mới ngầm
+    WATCHER_INTERVAL_MS: 30 * 1000,         // tick mỗi 30 giây
+    ACTIVITY_THROTTLE_MS: 8 * 1000,         // throttle ghi nhận hoạt động (đỡ tốn, nằm trong khung 5-10s)
+    ACTIVITY_STORAGE_KEY: 'tuyensinh_last_activity_ts_w1', // hậu tố "_w1" — Web2 dùng "_w2"
+};
+
+let __lastActivityTs = Date.now();
+let __lastActivityWriteTs = 0;
+let __renewInFlight = false;    // chặn gọi prompt() chồng lên nhau khi tick liên tiếp
+let __renewBannerShown = false;
+
+// (D.2) bumpActivity() — theo dõi tương tác thật, có throttle. Lưu mốc vào sessionStorage để nếu nhân
+// viên F5 giữa chừng thì thời gian rảnh tay vẫn được tính đúng (không bị reset về 0).
+function bumpActivity() {
+    const now = Date.now();
+    __lastActivityTs = now;
+    if (now - __lastActivityWriteTs > IDLE_CONFIG.ACTIVITY_THROTTLE_MS) {
+        __lastActivityWriteTs = now;
+        try { sessionStorage.setItem(IDLE_CONFIG.ACTIVITY_STORAGE_KEY, String(now)); } catch (e) { /* ignore */ }
+    }
+}
+['mousemove', 'keydown', 'click', 'scroll', 'touchstart', 'input'].forEach(evt => {
+    window.addEventListener(evt, bumpActivity, { passive: true });
+});
+// Khôi phục mốc hoạt động cuối cùng ngay khi script chạy (trước cả DOMContentLoaded) để F5 không reset idle timer.
+(function restoreLastActivity() {
+    try {
+        const saved = parseInt(sessionStorage.getItem(IDLE_CONFIG.ACTIVITY_STORAGE_KEY) || "0", 10);
+        if (saved > 0) __lastActivityTs = saved;
+    } catch (e) { /* ignore */ }
+})();
+
+// (D.3) closeAllModalsForLogout() — đóng sạch mọi popup đang mở trước khi ép về màn login.
+// hoSoDetailModal được gắn ngoài khung chính (ensureHoSoDetailModal) nên nếu không đóng sẽ đè lên màn login.
+function closeAllModalsForLogout() {
+    try { customModalSyncLock = false; } catch (e) { /* ignore */ }
+    ['customModal', 'feedbackModal', 'hoSoDetailModal', 'importExcelModal', 'searchCandidateModal', 'lookupModal']
+        .forEach(id => { const el = document.getElementById(id); if (el) el.style.display = 'none'; });
+    closeAccountMenu();
+    hideRenewBanner();
+}
+
+// (D.4) forceLogoutDueToIdle() — đăng xuất do rảnh tay quá 10 phút: âm thầm, không hỏi lại, chỉ báo
+// bằng dòng chữ trên màn hình đăng nhập sau khi đã đăng xuất xong.
+function forceLogoutDueToIdle() {
+    closeAllModalsForLogout();
+    clearLoginState();
+    try {
+        if (window.google && google.accounts && google.accounts.id) {
+            google.accounts.id.disableAutoSelect();
+        }
+    } catch (e) { /* ignore */ }
+    updateAccountLabel();
+    const gateLabel = document.getElementById('gate-account-label');
+    if (gateLabel) {
+        gateLabel.innerText = "⏱️ Phiên làm việc quá hạn do không thao tác quá 10 phút, vui lòng đăng nhập lại.";
+        gateLabel.style.color = "#d32f2f";
+    }
+}
+
+// Banner dự phòng — chỉ hiện khi làm mới ngầm thất bại. Tự tạo bằng JS (không cần sửa HTML), không chặn
+// thao tác, nằm góc dưới-phải, bấm 1 cái để làm mới thủ công.
+function ensureRenewBanner() {
+    let banner = document.getElementById('tokenRenewBanner');
+    if (banner) return banner;
+    banner = document.createElement('div');
+    banner.id = 'tokenRenewBanner';
+    banner.style.cssText = "position:fixed;bottom:16px;right:16px;z-index:10070;background:#fff3cd;" +
+        "color:#7a5b00;border:1px solid #ffe08a;border-radius:8px;box-shadow:0 2px 10px rgba(0,0,0,0.15);" +
+        "padding:10px 14px;font-size:13px;display:none;align-items:center;gap:10px;max-width:320px;";
+    banner.innerHTML =
+        '<span>⏳ Phiên sắp hết hạn — bấm để làm mới</span>' +
+        '<button id="tokenRenewBannerBtn" style="border:none;background:#7a5b00;color:#fff;padding:6px 10px;' +
+        'border-radius:6px;cursor:pointer;font-size:12px;white-space:nowrap;">Làm mới</button>';
+    document.body.appendChild(banner);
+    document.getElementById('tokenRenewBannerBtn').addEventListener('click', () => {
+        hideRenewBanner();
+        trySilentRenew(true); // forceManual: mở lại prompt Google, lần này cho phép hiện hộp thoại nếu cần
+    });
+    return banner;
+}
+function showRenewBanner() {
+    ensureRenewBanner().style.display = 'flex';
+    __renewBannerShown = true;
+}
+function hideRenewBanner() {
+    const banner = document.getElementById('tokenRenewBanner');
+    if (banner) banner.style.display = 'none';
+    __renewBannerShown = false;
+}
+
+// (D.5) trySilentRenew() — thử làm mới token ngầm khi còn đang hoạt động. Nếu Google từ chối hiện ngầm
+// (isNotDisplayed/isSkippedMoment) -> hiện banner dự phòng để nhân viên tự bấm làm mới.
+// forceManual=true: gọi từ nút trong banner (người dùng đã chủ động bấm) -> không hiện lại banner ngay cả khi thất bại lần này.
+function trySilentRenew(forceManual = false) {
+    if (__renewInFlight) return;
+    if (!window.google || !google.accounts || !google.accounts.id) return;
+    __renewInFlight = true;
+    try {
+        google.accounts.id.prompt((notification) => {
+            __renewInFlight = false;
+            const failedSilently = notification && (
+                (notification.isNotDisplayed && notification.isNotDisplayed()) ||
+                (notification.isSkippedMoment && notification.isSkippedMoment())
+            );
+            if (failedSilently && !forceManual) showRenewBanner();
+        });
+    } catch (e) {
+        __renewInFlight = false;
+        if (!forceManual) showRenewBanner();
+    }
+}
+
+// (D.6) sessionWatcherTick() — chạy mỗi 30s, gộp (4) đăng xuất do rảnh tay & (5) làm mới ngầm.
+function sessionWatcherTick() {
+    if (!isLoggedIn()) return; // chưa đăng nhập thì không có phiên nào để theo dõi
+
+    const idleMs = Date.now() - __lastActivityTs;
+    if (idleMs >= IDLE_CONFIG.IDLE_TIMEOUT_MS) {
+        forceLogoutDueToIdle();
+        return;
+    }
+
+    const msToExpiry = (currentTokenExp * 1000) - Date.now();
+    if (msToExpiry <= IDLE_CONFIG.RENEW_BEFORE_EXPIRY_MS) {
+        trySilentRenew(false);
+    }
+}
+setInterval(sessionWatcherTick, IDLE_CONFIG.WATCHER_INTERVAL_MS);
+
 const sysSep = (1.1).toLocaleString().substring(1, 2);
 const wrongSep = sysSep === '.' ? ',' : '.';
 
 // ==========================================
 // BỘ MÁY XÉT DUYỆT 2 PHA (HỒ SƠ & ĐIỂM)
 // ==========================================
-function autoCheckAdmission() {
-    const nganh = document.getElementById('nganh').value;
-    const doiTuongDauVao = document.getElementById('doituongdauvao').value;
-    const box = document.getElementById('traffic-light-box');
-    
-    if (!nganh || !doiTuongDauVao) { box.style.display = 'none'; return; }
-    box.style.display = 'flex';
+// Bảng đối chiếu: id ô nhập điểm (form) <-> tên cột điểm tương ứng trong dataList/Sheet.
+// Dùng để hàm lõi computeAdmissionCore() đọc điểm được từ CẢ form (DOM) lẫn từ 1 hàng dữ liệu đã lưu (row).
+const SUBJECT_FIELD_TO_ROW_KEY = {
+    diem_toan: "TOÁN", diem_vatli: "VẬT LÍ", diem_hoahoc: "HÓA HỌC", diem_sinhhoc: "SINH HỌC",
+    diem_nguvan: "NGỮ VĂN", diem_lichsu: "LỊCH SỬ", diem_dialy: "ĐỊA LÝ", diem_tienganh: "TIẾNG ANH",
+    diem_tiengtrung: "TIẾNG TRUNG", diem_tinhoc: "TIN HỌC", diem_gdktpl: "GDKTPL",
+    diem_tb_he4: "ĐIỂM TB TOÀN KHÓA HỆ 4", diem_tb_he10: "ĐIỂM TB TOÀN KHÓA HỆ 10"
+};
+
+// Hàm LÕI THUẦN (không đụng DOM): nhận vào các dữ liệu cần thiết qua "input",
+// trả ra kết quả xét duyệt 2 pha (hồ sơ & điểm). Dùng chung cho cả:
+//   - Form nhập tay (autoCheckAdmission() bên dưới, đọc trực tiếp từ DOM)
+//   - Dòng dữ liệu đã lưu trong bảng tổng hợp / modal (computeAdmissionResultForRow() bên dưới)
+// input = {
+//   nganh, doiTuongDauVao,          // string
+//   isDocChecked(doc) => bool,      // doc là {id, name} lấy từ DICT_HO_SO.chung / .tien_quyet
+//   khuVucUuTien, doiTuongUuTien,   // string (giá trị đang chọn/đã lưu)
+//   getScore(subjectFieldId) => giá trị điểm (string/number),
+//   he4, he10                      // giá trị điểm TB toàn khóa (string/number)
+// }
+function computeAdmissionCore(input) {
+    const { nganh, doiTuongDauVao, isDocChecked, khuVucUuTien, doiTuongUuTien, getScore, he4: he4Raw, he10: he10Raw } = input;
+
+    if (!nganh || !doiTuongDauVao) return null;
 
     let missingChung = [];
     let missingTienQuyet = [];
 
-    DICT_HO_SO.chung.forEach(doc => { if (!document.getElementById(doc.id).checked) missingChung.push(doc.name); });
+    DICT_HO_SO.chung.forEach(doc => { if (!isDocChecked(doc)) missingChung.push(doc.name); });
     const dsTienQuyet = DICT_HO_SO.tien_quyet[doiTuongDauVao] || [];
-    dsTienQuyet.forEach(doc => { if (!document.getElementById(doc.id).checked) missingTienQuyet.push(doc.name); });
+    dsTienQuyet.forEach(doc => { if (!isDocChecked(doc)) missingTienQuyet.push(doc.name); });
 
     let hsStatus = "OK"; let hsColor = "#155724"; let hsMsg = "✔️ Trạng thái hồ sơ: Đầy đủ.";
 
@@ -268,8 +484,8 @@ function autoCheckAdmission() {
     let diemStatus = "FAIL"; let diemMsg = "";
 
     if (doiTuongDauVao === "Tốt nghiệp THPT") {
-        let kvPoint = DICT_KHU_VUC[document.getElementById('khuvucuutien').value] || 0;
-        let dtPoint = DICT_DOI_TUONG[document.getElementById('doituonguutien').value] || 0;
+        let kvPoint = DICT_KHU_VUC[khuVucUuTien] || 0;
+        let dtPoint = DICT_DOI_TUONG[doiTuongUuTien] || 0;
         let uTienBanDau = kvPoint + dtPoint;
 
         let combos = DICT_NGANH[nganh] || [];
@@ -277,11 +493,11 @@ function autoCheckAdmission() {
 
         combos.forEach(maToHop => {
             let subjects = DICT_TO_HOP[maToHop];
-            let score1 = parseFloat(getVal(subjects[0])) || 0;
-            let score2 = parseFloat(getVal(subjects[1])) || 0;
-            let score3 = parseFloat(getVal(subjects[2])) || 0;
-            
-            if(score1 > 0 && score2 > 0 && score3 > 0) {
+            let score1 = parseFloat(getScore(subjects[0])) || 0;
+            let score2 = parseFloat(getScore(subjects[1])) || 0;
+            let score3 = parseFloat(getScore(subjects[2])) || 0;
+
+            if (score1 > 0 && score2 > 0 && score3 > 0) {
                 let total = score1 + score2 + score3;
                 if (total > maxScore) { maxScore = total; bestCombo = maToHop; }
             }
@@ -292,7 +508,7 @@ function autoCheckAdmission() {
         } else {
             let uTienChinhThuc = uTienBanDau;
             if (maxScore >= 22.5) uTienChinhThuc = ((30 - maxScore) / 7.5) * uTienBanDau;
-            uTienChinhThuc = Math.round(uTienChinhThuc * 100) / 100; 
+            uTienChinhThuc = Math.round(uTienChinhThuc * 100) / 100;
             let finalScore = Math.round((maxScore + uTienChinhThuc) * 100) / 100;
 
             if (finalScore >= 15.0) {
@@ -303,7 +519,7 @@ function autoCheckAdmission() {
             }
         }
     } else {
-        let he4 = parseFloat(getVal('diem_tb_he4')); let he10 = parseFloat(getVal('diem_tb_he10'));
+        let he4 = parseFloat(he4Raw); let he10 = parseFloat(he10Raw);
         if (isNaN(he4) && isNaN(he10)) {
             diemMsg = "Vui lòng nhập Điểm trung bình toàn khóa (Hệ 4 hoặc Hệ 10).";
         } else if (he4 >= 2.0 || he10 >= 5.0) {
@@ -313,27 +529,81 @@ function autoCheckAdmission() {
         }
     }
 
+    let boxBg, boxBorder, icon, title, titleColor;
+    if (hsStatus === "FAIL") {
+        boxBg = '#f8d7da'; boxBorder = '#f5c6cb'; icon = '🔴'; title = "KHÔNG ĐỦ ĐIỀU KIỆN SƠ TUYỂN"; titleColor = '#721c24';
+    } else if (diemStatus === "FAIL") {
+        boxBg = '#f8d7da'; boxBorder = '#f5c6cb'; icon = '🔴'; title = "KHÔNG ĐẠT ĐIỂM CHUẨN"; titleColor = '#721c24';
+    } else if (hsStatus === "WARN" && diemStatus === "PASS") {
+        boxBg = '#fff3cd'; boxBorder = '#ffeeba'; icon = '🟡'; title = "ĐẠT SƠ TUYỂN (CẦN BỔ SUNG HỒ SƠ)"; titleColor = '#856404';
+    } else { // hsStatus === "OK" && diemStatus === "PASS"
+        boxBg = '#d4edda'; boxBorder = '#c3e6cb'; icon = '🟢'; title = "ĐỦ ĐIỀU KIỆN SƠ TUYỂN CHÍNH THỨC"; titleColor = '#155724';
+    }
+
+    return { hsStatus, hsColor, hsMsg, diemStatus, diemMsg, boxBg, boxBorder, icon, title, titleColor };
+}
+
+// Wrapper cũ: đọc từ DOM (form nhập tay), giữ NGUYÊN hành vi/giao diện traffic-light-box như trước.
+function autoCheckAdmission() {
+    const nganh = document.getElementById('nganh').value;
+    const doiTuongDauVao = document.getElementById('doituongdauvao').value;
+    const box = document.getElementById('traffic-light-box');
+
+    if (!nganh || !doiTuongDauVao) { box.style.display = 'none'; return; }
+    box.style.display = 'flex';
+
+    const result = computeAdmissionCore({
+        nganh, doiTuongDauVao,
+        isDocChecked: (doc) => document.getElementById(doc.id).checked,
+        khuVucUuTien: document.getElementById('khuvucuutien').value,
+        doiTuongUuTien: document.getElementById('doituonguutien').value,
+        getScore: (fieldId) => getVal(fieldId),
+        he4: getVal('diem_tb_he4'), he10: getVal('diem_tb_he10')
+    });
+    if (!result) { box.style.display = 'none'; return; }
+
     const titleEl = document.getElementById('tl-title');
     const hsDescEl = document.getElementById('tl-hs-desc');
     const diemDescEl = document.getElementById('tl-diem-desc');
     const iconEl = document.getElementById('tl-icon');
 
-    hsDescEl.innerHTML = hsMsg; hsDescEl.style.color = hsColor;
-    diemDescEl.innerHTML = `📊 Kết quả điểm: ${diemMsg}`;
+    hsDescEl.innerHTML = result.hsMsg; hsDescEl.style.color = result.hsColor;
+    diemDescEl.innerHTML = `📊 Kết quả điểm: ${result.diemMsg}`;
 
-    if (hsStatus === "FAIL") {
-        box.style.backgroundColor = '#f8d7da'; box.style.borderColor = '#f5c6cb';
-        iconEl.innerHTML = '🔴'; titleEl.innerHTML = "KHÔNG ĐỦ ĐIỀU KIỆN SƠ TUYỂN"; titleEl.style.color = '#721c24';
-    } else if (diemStatus === "FAIL") {
-        box.style.backgroundColor = '#f8d7da'; box.style.borderColor = '#f5c6cb';
-        iconEl.innerHTML = '🔴'; titleEl.innerHTML = "KHÔNG ĐẠT ĐIỂM CHUẨN"; titleEl.style.color = '#721c24';
-    } else if (hsStatus === "WARN" && diemStatus === "PASS") {
-        box.style.backgroundColor = '#fff3cd'; box.style.borderColor = '#ffeeba';
-        iconEl.innerHTML = '🟡'; titleEl.innerHTML = "ĐẠT SƠ TUYỂN (CẦN BỔ SUNG HỒ SƠ)"; titleEl.style.color = '#856404';
-    } else if (hsStatus === "OK" && diemStatus === "PASS") {
-        box.style.backgroundColor = '#d4edda'; box.style.borderColor = '#c3e6cb';
-        iconEl.innerHTML = '🟢'; titleEl.innerHTML = "ĐỦ ĐIỀU KIỆN SƠ TUYỂN CHÍNH THỨC"; titleEl.style.color = '#155724';
-    }
+    box.style.backgroundColor = result.boxBg; box.style.borderColor = result.boxBorder;
+    iconEl.innerHTML = result.icon; titleEl.innerHTML = result.title; titleEl.style.color = result.titleColor;
+}
+
+// Hàm MỚI: tính kết quả xét duyệt 2 pha cho 1 HÀNG DỮ LIỆU ĐÃ LƯU (row trong dataList),
+// dùng để hiển thị "Kết quả sơ tuyển" trong bảng tổng hợp / modal chi tiết — KHÔNG đụng gì tới
+// autoCheckAdmission()/traffic-light-box của form nhập tay ở trên.
+function computeAdmissionResultForRow(row) {
+    if (!row) return null;
+    return computeAdmissionCore({
+        nganh: row["NGÀNH"],
+        doiTuongDauVao: row["ĐỐI TƯỢNG ĐẦU VÀO"],
+        isDocChecked: (doc) => row[doc.name.toUpperCase()] === "TRUE",
+        khuVucUuTien: row["KHU VỰC ƯU TIÊN"],
+        doiTuongUuTien: row["ĐỐI TƯỢNG ƯU TIÊN"],
+        getScore: (fieldId) => row[SUBJECT_FIELD_TO_ROW_KEY[fieldId]],
+        he4: row["ĐIỂM TB TOÀN KHÓA HỆ 4"], he10: row["ĐIỂM TB TOÀN KHÓA HỆ 10"]
+    });
+}
+
+// Dựng "2 dòng chữ" tóm tắt (thay cho đèn giao thông) để nhét vào 1 ô <td> trong bảng tổng hợp
+// hoặc vào modal chi tiết. Dòng 1 = tình trạng hồ sơ (Đủ/Thiếu), Dòng 2 = kết quả sơ tuyển.
+function buildAdmissionSummaryLines(row) {
+    const result = computeAdmissionResultForRow(row);
+    if (!result) return `<span style="color:#999; font-style:italic;">Chưa đủ dữ liệu để xét (thiếu Ngành/Đối tượng đầu vào)</span>`;
+
+    const hsLine = {
+        OK: `✔️ Hồ sơ: Đầy đủ`,
+        WARN: `⚠️ Hồ sơ: Nợ hồ sơ chung`,
+        FAIL: `❌ Hồ sơ: Thiếu hồ sơ tiên quyết`
+    }[result.hsStatus];
+
+    return `<div style="color:${result.hsColor};">${hsLine}</div>` +
+           `<div style="color:${result.titleColor}; font-weight:bold;">${result.icon} ${result.title}</div>`;
 }
 // ==========================================
 // CÁC HÀM TIỆN ÍCH KHÁC (TRA CỨU KHU VỰC)
@@ -739,7 +1009,12 @@ function renderTable() {
         tr.ondblclick = (e) => { if (e.target.closest('button') || e.target.closest('a')) return; openHoSoDetailModal(index); };
         
         // Đã cập nhật BẢN SAO ID vào bảng preview của Web1
-        tr.innerHTML = `<td>${row["STT"]}</td><td class="${isUp ? 'status-done' : 'status-pending'}">${row["TRẠNG THÁI ĐẨY"]}</td><td><b>${actionText}${row["CĂN CƯỚC"] || row["SỐ CCCD"]}</b></td><td>${row["TÊN SINH VIÊN"]}</td><td>${row["NGÀY SINH"]}</td><td>${row["NGÀNH"]}</td><td>${row["KHÓA"]}</td><td>${row["ĐỐI TƯỢNG ƯU TIÊN"]}</td><td>${row["KHU VỰC ƯU TIÊN"]}</td><td>${row["ĐỐI TƯỢNG ĐẦU VÀO"]}</td><td>${row["NĂM XÉT TUYỂN"]}</td><td>${row["HỆ ĐÀO TẠO"]}</td><td>${row["HÌNH THỨC ĐÀO TẠO"]}</td>
+        // Cột "Kết quả sơ tuyển" (mục e): 2 dòng chữ thay cho đèn giao thông, tính lại từ chính dữ liệu
+        // đã lưu của hàng này bằng computeAdmissionResultForRow() — dùng chung 1 bộ logic với
+        // autoCheckAdmission() của form nhập tay, KHÔNG đụng gì tới form nhập tay ở trên.
+        // LƯU Ý: cần thêm 1 cột <th>Kết quả sơ tuyển</th> tương ứng trong <thead> của file HTML
+        // (chưa có trong file JS này) để bảng không bị lệch cột — gửi file HTML tôi gắn nốt.
+        tr.innerHTML = `<td>${row["STT"]}</td><td class="${isUp ? 'status-done' : 'status-pending'}">${row["TRẠNG THÁI ĐẨY"]}</td><td style="font-size:12px; line-height:1.5; white-space:normal;">${buildAdmissionSummaryLines(row)}</td><td><b>${actionText}${row["CĂN CƯỚC"] || row["SỐ CCCD"]}</b></td><td>${row["TÊN SINH VIÊN"]}</td><td>${row["NGÀY SINH"]}</td><td>${row["NGÀNH"]}</td><td>${row["KHÓA"]}</td><td>${row["ĐỐI TƯỢNG ƯU TIÊN"]}</td><td>${row["KHU VỰC ƯU TIÊN"]}</td><td>${row["ĐỐI TƯỢNG ĐẦU VÀO"]}</td><td>${row["NĂM XÉT TUYỂN"]}</td><td>${row["HỆ ĐÀO TẠO"]}</td><td>${row["HÌNH THỨC ĐÀO TẠO"]}</td>
             ${fmtLink(row["LINK HỒ SƠ"])}${fmtTick(row["PHIẾU ĐĂNG KÝ DỰ TUYỂN"])}${fmtTick(row["SƠ YẾU LÝ LỊCH"])}${fmtTick(row["BẢN SAO ID"])}${fmtTick(row["ẢNH THẺ"])}${fmtTick(row["BẢN SAO BẰNG THPT/GIẤY BÁO ĐIỂM"])}${fmtTick(row["BẢN SAO HỌC BẠ THPT"])}${fmtTick(row["BẢN SAO BẰNG TRUNG CẤP"])}${fmtTick(row["BẢNG ĐIỂM TRUNG CẤP"])}${fmtTick(row["BẰNG THPT/GCN ĐỦ KL KTVH THPT"])}${fmtTick(row["BẢN SAO BẰNG TRUNG CẤP TRƯỚC 2022"])}${fmtTick(row["BẢNG ĐIỂM TRUNG CẤP TRƯỚC 2022"])}${fmtTick(row["GCN HOÀN THÀNH CT GDPT"])}${fmtTick(row["BẰNG CAO ĐẲNG"])}${fmtTick(row["BẢNG ĐIỂM CAO ĐẲNG"])}${fmtTick(row["BẰNG ĐẠI HỌC"])}${fmtTick(row["BẢNG ĐIỂM ĐẠI HỌC"])}
             <td>${row["GIẤY TỜ ƯU TIÊN"]}</td><td>${row["TOÁN"]}</td><td>${row["VẬT LÍ"]}</td><td>${row["HÓA HỌC"]}</td><td>${row["SINH HỌC"]}</td><td>${row["NGỮ VĂN"]}</td><td>${row["LỊCH SỬ"]}</td><td>${row["ĐỊA LÝ"]}</td><td>${row["TIẾNG ANH"]}</td><td>${row["TIẾNG TRUNG"]}</td><td>${row["TIN HỌC"]}</td><td>${row["GDKTPL"]}</td><td><b>${row["ĐIỂM TB TOÀN KHÓA HỆ 4"]}</b></td><td><b>${row["ĐIỂM TB TOÀN KHÓA HỆ 10"]}</b></td><td><b style="color:#d32f2f">${row["ĐIỂM CỘNG"]}</b></td>
             <td>${!isUp ? `<div style="display:flex;"><button class="btn-edit-row" onclick="editRow(${index})" ${editingIndex !== -1 ? 'disabled style="opacity:0.5; cursor:not-allowed;"' : ''}>✏️</button><button class="btn-delete-row" onclick="deleteRow(${index})" ${editingIndex !== -1 ? 'disabled style="opacity:0.5; cursor:not-allowed;"' : ''}>🗑️</button></div>` : ''}</td>`;
@@ -889,6 +1164,8 @@ function openHoSoDetailModal(index) {
         ${hsBuildChecklistTable(hoSoPairs)}
         <div class="hs-section-title">🧮 Khung điểm</div>
         ${hsBuildPairsTable(diemPairs)}
+        <div class="hs-section-title">🎯 Kết quả sơ tuyển</div>
+        <div style="padding:2px 2px 4px;">${buildAdmissionSummaryLines(row)}</div>
     `;
 
     const disableEdit = editingIndex !== -1;
@@ -1566,12 +1843,15 @@ window.addEventListener('keydown', function(event) {
         // Đóng đúng lớp modal đang hiển thị TRÊN CÙNG (theo z-index giảm dần) — mỗi lần ESC chỉ đóng 1 lớp,
         // tránh trường hợp đóng chồng nhiều modal cùng lúc (vd: customModal báo lỗi mở đè lên importExcelModal).
         const customModal = document.getElementById('customModal');           // z-index 10050
+        const feedbackModal = document.getElementById('feedbackModal');       // z-index 10060 (c)
         const hoSoDetailModal = document.getElementById('hoSoDetailModal');   // z-index 10020
         const importExcelModal = document.getElementById('importExcelModal'); // z-index 10010
         const searchCandidateModal = document.getElementById('searchCandidateModal'); // z-index 10000
         const lookupModal = document.getElementById('lookupModal');           // z-index mặc định (thấp nhất)
 
-        if (customModal && customModal.style.display === 'flex') {
+        if (feedbackModal && feedbackModal.style.display === 'flex') {
+            closeFeedbackModal();
+        } else if (customModal && customModal.style.display === 'flex') {
             // Đang khóa (ví dụ: đang đồng bộ dữ liệu lên hệ thống) -> ESC không có tác dụng, bắt buộc chờ xong.
             if (!customModalSyncLock) customModal.style.display = 'none';
         } else if (hoSoDetailModal && hoSoDetailModal.style.display === 'flex') {
@@ -1582,6 +1862,8 @@ window.addEventListener('keydown', function(event) {
             closeSearchModal();
         } else if (lookupModal && lookupModal.style.display === 'flex') {
             closeLookupModal();
+        } else if (__renewBannerShown) {
+            hideRenewBanner(); // chỉ ẩn banner, không tự làm mới token — nhân viên có thể bấm lại sau
         }
     }
 });
@@ -1736,4 +2018,64 @@ async function processCCCDImage(input) {
         }
         input.value = ""; // Reset nút upload
     };
+}
+
+// ==========================================
+// (c) GỬI PHẢN HỒI LỖI TRONG QUÁ TRÌNH SỬ DỤNG — y hệt repo2 Web2
+// Dùng chung backend GAS qua API_QUET_CCCD (đã có sẵn xác thực idToken + whitelist) — thêm nhánh "feedback",
+// bắn nội dung kèm tài khoản gửi về Google Chat. Cùng 1 endpoint đang dùng để quét CCCD ở trên.
+// ==========================================
+const FEEDBACK_PLACEHOLDER = "Mô tả chính xác và ngắn gọn lỗi bạn gặp phải, chúng tôi sẽ kiểm tra ngay.";
+
+function openFeedbackModal() {
+    const modal = document.getElementById('feedbackModal');
+    if (!modal) return;
+    document.getElementById('feedbackBody').innerHTML = `
+        <textarea id="feedbackText" rows="5" placeholder="${FEEDBACK_PLACEHOLDER}"
+            style="width:100%; box-sizing:border-box; padding:10px; border:1px solid #ccc; border-radius:6px; font-size:14px; font-family:inherit; resize:vertical; outline:none;"></textarea>
+    `;
+    document.getElementById('feedbackFooter').innerHTML = `
+        <button class="btn-modal-cancel" onclick="closeFeedbackModal()">Hủy bỏ</button>
+        <button class="btn-modal-ok" id="btnFeedbackSend" onclick="submitFeedback()">📤 Gửi</button>
+    `;
+    modal.style.display = 'flex';
+    setTimeout(() => document.getElementById('feedbackText')?.focus(), 50);
+}
+
+function closeFeedbackModal() {
+    const modal = document.getElementById('feedbackModal');
+    if (modal) modal.style.display = 'none';
+}
+
+async function submitFeedback() {
+    const textEl = document.getElementById('feedbackText');
+    const content = textEl ? textEl.value.trim() : "";
+    if (!content) { if (textEl) textEl.style.borderColor = "#d32f2f"; return; }
+
+    const btn = document.getElementById('btnFeedbackSend');
+    if (btn) { btn.disabled = true; btn.innerText = "⏳ Đang gửi..."; btn.style.opacity = "0.7"; }
+
+    try {
+        const resp = await fetch(API_QUET_CCCD, {
+            method: "POST", headers: { "Content-Type": "text/plain;charset=utf-8" },
+            body: JSON.stringify({ idToken: currentIdToken, type: "feedback", noiDung: content })
+        });
+        const result = await resp.json();
+
+        if (result.status === "success") {
+            document.getElementById('feedbackBody').innerHTML = `
+                <p style="text-align:center; font-size:14px; color:#2e7d32; padding:14px 0;">✅ Cảm ơn bạn, chúng tôi đã nhận được phản hồi.</p>
+            `;
+            document.getElementById('feedbackFooter').innerHTML = `<button class="btn-modal-ok" onclick="closeFeedbackModal()">Đóng</button>`;
+            setTimeout(closeFeedbackModal, 2500);
+        } else {
+            document.getElementById('feedbackBody').insertAdjacentHTML('beforeend',
+                `<p style="color:#d32f2f; font-size:13px; margin-top:8px;">❌ ${result.message || result.error || 'Gửi thất bại, vui lòng thử lại.'}</p>`);
+            if (btn) { btn.disabled = false; btn.innerText = "📤 Gửi"; btn.style.opacity = "1"; }
+        }
+    } catch (e) {
+        document.getElementById('feedbackBody').insertAdjacentHTML('beforeend',
+            `<p style="color:#d32f2f; font-size:13px; margin-top:8px;">❌ Lỗi kết nối, vui lòng thử lại.</p>`);
+        if (btn) { btn.disabled = false; btn.innerText = "📤 Gửi"; btn.style.opacity = "1"; }
+    }
 }
