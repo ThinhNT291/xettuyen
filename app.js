@@ -302,7 +302,7 @@ window.addEventListener('DOMContentLoaded', () => {
 //   tác, bấm 1 cái để làm mới thủ công, không mất dữ liệu, không cần tải lại trang.
 // ==========================================
 const IDLE_CONFIG = {
-    IDLE_TIMEOUT_MS: 10 * 60 * 1000,        // 10 phút rảnh tay -> tự đăng xuất (theo chốt của bạn)
+    IDLE_TIMEOUT_MS: 30 * 60 * 1800,        // 10 phút rảnh tay -> tự đăng xuất (theo chốt của bạn)
     RENEW_BEFORE_EXPIRY_MS: 5 * 60 * 1000,  // còn 5 phút hết hạn token -> thử làm mới ngầm
     WATCHER_INTERVAL_MS: 30 * 1000,         // tick mỗi 30 giây
     ACTIVITY_THROTTLE_MS: 8 * 1000,         // throttle ghi nhận hoạt động (đỡ tốn, nằm trong khung 5-10s)
@@ -358,7 +358,7 @@ function forceLogoutDueToIdle() {
     updateAccountLabel();
     const gateLabel = document.getElementById('gate-account-label');
     if (gateLabel) {
-        gateLabel.innerText = "⏱️ Phiên làm việc quá hạn do không thao tác quá 10 phút, vui lòng đăng nhập lại.";
+        gateLabel.innerText = "⏱️ Phiên làm việc quá hạn, vui lòng đăng nhập lại.";
         gateLabel.style.color = "#d32f2f";
     }
 }
