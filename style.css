@@ -67,6 +67,13 @@ tr:nth-child(even) { background-color: #f9f9f9; }
 .row-uploaded td { background-color: #e0e0e0 !important; color: #757575 !important; }
 .status-pending { color: #f57f17; font-weight: bold; }
 .status-done { color: #2e7d32; font-weight: bold; }
+/* ĐÃ THÊM: trạng thái "Duplicated" — làm dạng nhãn (badge) nền cam đặc, chữ trắng đậm để nổi bật giữa
+   bảng nhiều cột, thay vì chỉ đổi màu chữ (dễ bị lướt qua). Kèm tô nhẹ TOÀN BỘ hàng chứa ô này bằng
+   CSS :has() (Chrome/Edge/Safari và Firefox 121+ đều hỗ trợ) — không cần sửa app.js. Trình duyệt cũ hơn
+   không hỗ trợ :has() vẫn thấy nhãn cam nổi bật bình thường, chỉ là không tô thêm cả hàng.
+*/
+.status-duplicate { color: #ffffff; font-weight: bold; background-color: #ef6c00; padding: 3px 8px; border-radius: 4px; display: inline-block; }
+tr:has(.status-duplicate) td { background-color: #fff3e0 !important; }
 .sep-notice { background-color: #fff3cd; color: #856404; border: 1px solid #ffeeba; padding: 10px 15px; border-radius: 6px; font-size: 13px; margin-bottom: 15px; display: flex; align-items: center; gap: 8px; }
 
 /* GIAO DIỆN MODAL SIÊU TỐC */
