@@ -1168,7 +1168,7 @@ function addImportedItemsToLocalList(items) {
 
     if (uniqueItems.length === 0) {
         showAlert(
-            `Toàn bộ ${items.length} hồ sơ trong file đã có sẵn trong danh sách hiện tại (trùng CĂN CƯỚC + NGÀNH) — không có hồ sơ mới nào được thêm.`,
+            `Toàn bộ ${items.length} hồ sơ trong file đã có sẵn trong danh sách hiện tại. Sử dụng chức năng <b>Sửa</b> để cập nhật thông tin — không có hồ sơ mới nào được thêm.`,
             "⚠️ TOÀN BỘ ĐÃ TRÙNG", true
         );
         return;
@@ -1192,11 +1192,11 @@ function addImportedItemsToLocalList(items) {
 
     let msg = `Đã nạp ${uniqueItems.length} hồ sơ từ file Excel vào danh sách bên dưới.`;
     if (duplicateInfo.length > 0) {
-        msg += `\n\n⚠️ Đã bỏ qua ${duplicateInfo.length} hồ sơ trùng CĂN CƯỚC + NGÀNH với dữ liệu đang có:\n` +
+        msg += `\n\n⚠️ Đã bỏ qua ${duplicateInfo.length} hồ sơ trùng CĂN CƯỚC + NGÀNH với dữ liệu đang có, Sử dụng chức năng <b>Sửa</b> để cập nhật thông tin:\n` +
             duplicateInfo.slice(0, 10).join('\n') +
             (duplicateInfo.length > 10 ? `\n...và ${duplicateInfo.length - 10} hồ sơ khác` : '');
     }
-    msg += `\n\n👉 Vui lòng kiểm tra lại dữ liệu trong danh sách để đảm bảo không thiếu sót, sau đó bấm "☁️ Đẩy dữ liệu lên hệ thống" để cập nhật.`;
+    msg += `\n\n👉 Nhấp đúp vào từng hồ sơ để kiểm tra thông tin, sau đó bấm "☁️ Đẩy dữ liệu lên hệ thống" để cập nhật.`;
 
     closeImportExcelModal();
     showAlert(msg, "✅ IMPORT THÀNH CÔNG", false);
@@ -1252,7 +1252,7 @@ async function sendToCloud() {
 async function executeUploadToCloud(pendingList) {
     // BẮT BUỘC ĐĂNG NHẬP GOOGLE TRƯỚC KHI GHI DỮ LIỆU
     if (!isLoggedIn()) {
-        showAlert("Bạn chưa đăng nhập Google hoặc phiên đăng nhập đã hết hạn (token sống khoảng 1 giờ).\n\n👉 Vui lòng bấm nút đăng nhập Google ở đầu trang rồi thử đẩy lại.", "🔒 CẦN ĐĂNG NHẬP", true);
+        showAlert("Phiên đăng nhập đã hết hạn.\n\n👉 Vui lòng tải lại trang.", "🔒 CẦN ĐĂNG NHẬP", true);
         return;
     }
 
@@ -1619,12 +1619,12 @@ async function processCCCDImage(input) {
 
     if (!isLoggedIn()) {
         input.value = "";
-        showAlert("Phiên đăng nhập đã hết hạn hoặc chưa đăng nhập, vui lòng đăng nhập lại trước khi quét.", "⚠️ CHƯA ĐĂNG NHẬP", true);
+        showAlert("Phiên đăng nhập đã hết hạn hoặc chưa đăng nhập, vui lòng đăng nhập lại.", "⚠️ CHƯA ĐĂNG NHẬP", true);
         return;
     }
 
     const statusText = document.getElementById('cccd-scan-status');
-    statusText.innerText = "⏳ Đang nén ảnh & và phân tích...";
+    statusText.innerText = "⏳ Đang phân tích...";
     statusText.style.color = "#f57c00";
 
     // BỘ MÁY ÉP ẢNH TỰ ĐỘNG (Dùng Canvas)
