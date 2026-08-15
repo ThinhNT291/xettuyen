@@ -44,9 +44,15 @@ const DICT_HO_SO = {
     // trong index.html (form chỉ còn 4 ô: doc_phieu_dk, doc_syll, doc_cccd, doc_anhthe). Trước đây để sót
     // entry này khiến document.getElementById('doc_khaisinh') trả về null -> autoCheckAdmission() ném lỗi
     // TypeError ngay giữa chừng -> traffic-light-box bị kẹt mãi ở chữ "Analyzing..." mặc định.
+    // LƯU Ý: "name" ở đây PHẢI khớp CHÍNH XÁC (kể cả hoa/thường) với chuỗi mà app_fixed_final.js
+    // dùng làm key lưu/đọc trong dataList (row[doc.name.toUpperCase()]) và khi tick/gỡ tick checkbox
+    // (row[key] === "TRUE"). Đổi "name" ở đây sẽ tự động đổi theo ở MỌI nơi hiển thị (live box, bảng
+    // danh sách, modal chi tiết) vì tất cả giờ đều tra cứu qua DICT_HO_SO — không cần sửa gì trong
+    // app_fixed_final.js nữa. Nhưng KHÔNG được đổi tuỳ tiện: nếu đổi "name" của 1 mục đã có dữ liệu
+    // cũ lưu trên Google Sheet (cột tương ứng đặt theo tên CŨ), dữ liệu cũ sẽ không còn khớp được nữa.
     chung: [
         { id: "doc_syll", name: "Sơ yếu lý lịch" },
-        { id: "doc_cccd", name: "Bản sao CCCD" }, 
+        { id: "doc_cccd", name: "Bản sao ID" }, // ĐÃ SỬA: khớp đúng key "BẢN SAO ID" đang dùng trong app_fixed_final.js (trước đây ghi "Bản sao CCCD" -> tra cứu sai)
         { id: "doc_anhthe", name: "Ảnh thẻ" }
     ],
     tien_quyet: {
@@ -54,7 +60,11 @@ const DICT_HO_SO = {
         "Tốt nghiệp Trung cấp sau 2022": [ { id: "doc_phieu_dk", name: "Phiếu đăng ký dự tuyển" }, { id: "doc_bang_tc", name: "Bản sao Bằng Trung cấp" }, { id: "doc_diem_tc", name: "Bảng điểm Trung cấp" }, { id: "doc_ktvh_thpt", name: "Bằng THPT/GCN đủ KL KTVH THPT" } ],
         "Tốt nghiệp Cao đẳng": [ { id: "doc_phieu_dk", name: "Phiếu đăng ký dự tuyển" }, { id: "doc_bang_cd", name: "Bằng Cao đẳng" }, { id: "doc_diem_cd", name: "Bảng điểm Cao đẳng" } ],
         "Tốt nghiệp Đại học": [ { id: "doc_phieu_dk", name: "Phiếu đăng ký dự tuyển" }, { id: "doc_bang_dh", name: "Bằng Đại học" }, { id: "doc_diem_dh", name: "Bảng điểm Đại học" } ],
-        "Tốt nghiệp Trung cấp trước 2022": [ { id: "doc_phieu_dk", name: "Phiếu đăng ký dự tuyển" }, { id: "doc_gcn_gdpt", name: "GCN hoàn thành CT GDPT" }, { id: "doc_bang_tc_truoc", name: "Bản sao Bằng TC trước 2022" }, { id: "doc_diem_tc_truoc", name: "Bảng điểm TC trước 2022" } ],
-        "Trung học nghề": [ { id: "doc_phieu_dk", name: "Phiếu đăng ký dự tuyển" }, { id: "doc_gcn_gdpt", name: "GCN hoàn thành CT GDPT" }, { id: "doc_bang_tc_truoc", name: "Bản sao Bằng TC trước 2022" }, { id: "doc_diem_tc_truoc", name: "Bảng điểm TC trước 2022" } ]
+        // ĐÃ SỬA: "Bản sao Bằng TC trước 2022" / "Bảng điểm TC trước 2022" -> đổi "TC" thành "Trung cấp"
+        // đầy đủ, khớp đúng key "BẢN SAO BẰNG TRUNG CẤP TRƯỚC 2022" / "BẢNG ĐIỂM TRUNG CẤP TRƯỚC 2022"
+        // đang dùng trong app_fixed_final.js (trước đây viết tắt "TC" -> tra cứu sai, checklist trong
+        // modal/bảng danh sách luôn hiện trống hoặc báo thiếu oan cho 2 mục này).
+        "Tốt nghiệp Trung cấp trước 2022": [ { id: "doc_phieu_dk", name: "Phiếu đăng ký dự tuyển" }, { id: "doc_gcn_gdpt", name: "GCN hoàn thành CT GDPT" }, { id: "doc_bang_tc_truoc", name: "Bản sao Bằng Trung cấp trước 2022" }, { id: "doc_diem_tc_truoc", name: "Bảng điểm Trung cấp trước 2022" } ],
+        "Trung học nghề": [ { id: "doc_phieu_dk", name: "Phiếu đăng ký dự tuyển" }, { id: "doc_gcn_gdpt", name: "GCN hoàn thành CT GDPT" }, { id: "doc_bang_tc_truoc", name: "Bản sao Bằng Trung cấp trước 2022" }, { id: "doc_diem_tc_truoc", name: "Bảng điểm Trung cấp trước 2022" } ]
     }
 };
