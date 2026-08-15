@@ -110,7 +110,7 @@
 <div id="loginGate" style="display:flex; min-height:100vh; align-items:center; justify-content:center; flex-direction:column; gap:16px; background:#f0f2f5; padding:16px; text-align:center; width:100%;">
     <div class="gate-box">
         <h2 class="gate-title">📝 CỔNG NHẬP LIỆU HỒ SƠ TUYỂN SINH</h2>
-        <p style="color:#555; font-size:14px; margin-bottom:20px;">Vui lòng đăng nhập bằng tài khoản Google đã được cấp quyền để tiếp tục.</p>
+        <p style="color:#555; font-size:14px; margin-bottom:20px;">Vui lòng đăng nhập để tiếp tục.</p>
         <div id="g_id_onload"
              data-client_id="311965248456-01ts8h9g6tuj0slob58n8vrfm091c4u7.apps.googleusercontent.com"
              data-callback="handleGoogleLogin"
@@ -127,8 +127,14 @@
     <div style="display:flex; align-items:flex-end; justify-content:space-between; flex-wrap:wrap; gap:10px; margin-bottom:12px;">
         <h2 style="margin:0;">📝 CỔNG NHẬP LIỆU HỒ SƠ TUYỂN SINH</h2>
         <div style="display:flex; align-items:center; gap:12px; flex-wrap:wrap; padding:8px 10px; background:#f5f5f5; border-radius:6px; border:1px solid #e0e0e0;">
-            <span id="current-account-label" style="font-weight:bold; font-size:13px;"></span>
-            <button type="button" id="btnSignOut" onclick="signOutUser()" style="display:none; background:#c62828; color:#fff; border:none; padding:6px 14px; border-radius:20px; font-size:13px; font-weight:bold; cursor:pointer; box-shadow:0 1px 3px rgba(0,0,0,0.2);">🚪 Đăng xuất</button>
+            <div id="accountMenuWrap" style="position:relative; display:none;">
+                <button type="button" id="accountMenuTrigger" onclick="toggleAccountMenu(event)" style="background:none; border:none; padding:2px 4px; font-weight:bold; font-size:13px; cursor:pointer; display:flex; align-items:center; gap:5px; color:inherit;">
+                    <span id="current-account-label"></span><span style="font-size:10px;">▾</span>
+                </button>
+                <div id="accountMenuDropdown" style="display:none; position:absolute; top:calc(100% + 6px); right:0; background:#fff; border:1px solid #ddd; border-radius:6px; box-shadow:0 4px 12px rgba(0,0,0,0.18); min-width:130px; z-index:10030; overflow:hidden;">
+                    <button type="button" id="btnSignOut" onclick="signOutUser()" style="display:block; width:100%; text-align:left; background:none; border:none; padding:10px 14px; font-size:13px; font-weight:bold; color:#c62828; cursor:pointer;">🚪 Log Out</button>
+                </div>
+            </div>
         </div>
     </div>
     
@@ -517,7 +523,7 @@
             </div>
             <input type="file" id="importExcelFileInput" accept=".xlsx,.xls,.csv" style="display:none;" onchange="onImportFileChosen(this)">
 
-            <div class="import-hint">Chấp nhận file Excel (.xlsx, .xls) hoặc CSV chuẩn, đúng cấu trúc tiêu đề của file mẫu. Dòng đầu tiên ngay sau tiêu đề được coi là <b>dòng mẫu/hướng dẫn</b> và sẽ tự động bị bỏ qua, không nhập vào hệ thống.</div>
+            <div class="import-hint">Lưu ý: Không sửa tiêu đề. Dòng đầu tiên ngay sau tiêu đề là <b>dòng mẫu</b>, không được xóa/điền dữ liệu thí sinh.</div>
         </div>
     </div>
 </div>
