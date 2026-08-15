@@ -52,6 +52,16 @@ let currentUserName = "";    // Họ tên hiển thị (lấy từ claim "name" 
 let currentTokenExp = 0;     // epoch giây, lấy từ claim "exp" của token
 let isVerifiedByServer = false; // chỉ true sau khi server xác nhận token hợp lệ + email nằm trong whitelist
 
+// atob() thuần chỉ decode base64 -> chuỗi byte kiểu Latin-1, trong khi payload JWT là JSON UTF-8.
+// Với tên có dấu tiếng Việt (chuỗi UTF-8 nhiều byte), atob() một mình sẽ làm vỡ font (ra ký tự lạ/mojibake).
+// Hàm dưới đây decode base64url -> byte string -> escape thành %XX -> decodeURIComponent để ra đúng UTF-8.
+function base64UrlDecodeUtf8(b64url) {
+    const base64 = b64url.replace(/-/g, '+').replace(/_/g, '/');
+    const byteString = atob(base64);
+    const percentEncoded = byteString.split('').map(c => '%' + ('00' + c.charCodeAt(0).toString(16)).slice(-2)).join('');
+    return decodeURIComponent(percentEncoded);
+}
+
 function isLoggedIn() {
     return !!currentIdToken && isVerifiedByServer && (Date.now() / 1000) < currentTokenExp;
 }
@@ -131,7 +141,7 @@ async function handleGoogleLogin(response) {
         gateLabelLoading.style.color = "#0288d1";
     }
     try {
-        const payload = JSON.parse(atob(response.credential.split('.')[1].replace(/-/g, '+').replace(/_/g, '/')));
+        const payload = JSON.parse(base64UrlDecodeUtf8(response.credential.split('.')[1]));
         const idToken = response.credential;
         const email = payload.email;
         const exp = payload.exp;
@@ -423,7 +433,25 @@ document.getElementById('lookupContent').innerHTML = `
 // ==========================================
 // CÁC HÀM MODAL TÙY CHỈNH
 // ==========================================
+// Cờ khóa popup: bật lên khi đang đồng bộ dữ liệu (showSyncingModal) để chặn ESC đóng popup giữa chừng.
+// Mọi hàm mở popup khác (showAlert/showConfirm/showUpdateOrInsertConfirm) đều tự tắt cờ này khi được gọi,
+// vì lúc đó nghĩa là quá trình đồng bộ đã có kết quả (thành công/thất bại) nên popup được phép đóng lại.
+let customModalSyncLock = false;
+
+// Hiện popup "Đang đồng bộ..." và KHÓA lại — không có nút nào để đóng, ESC cũng không tắt được.
+// Dùng khi bắt đầu đẩy dữ liệu lên hệ thống; sẽ được thay bằng showAlert (kết quả) khi xong, tự mở khóa.
+function showSyncingModal(message, title = "Đang đồng bộ") {
+    const modal = document.getElementById('customModal');
+    document.getElementById('modalHeader').className = 'modal-header info';
+    document.getElementById('modalHeader').innerHTML = `<span>🔄</span> ${title}`;
+    document.getElementById('modalBody').innerText = message;
+    document.getElementById('modalFooter').innerHTML = ''; // không có nút -> không có cách nào bấm đóng
+    modal.style.display = 'flex';
+    customModalSyncLock = true;
+}
+
 function showAlert(message, title = "Hệ thống nhập liệu tuyển sinh", isWarn = true, onCloseCallback = null) {
+    customModalSyncLock = false; // đã có kết quả (thành công/lỗi) -> mở khóa, cho phép đóng popup lại
     const modal = document.getElementById('customModal');
     document.getElementById('modalHeader').className = isWarn ? 'modal-header warn' : 'modal-header info';
     document.getElementById('modalHeader').innerHTML = isWarn ? `<span>⚠️</span> ${title}` : `<span>💡</span> ${title}`;
@@ -436,6 +464,7 @@ function showAlert(message, title = "Hệ thống nhập liệu tuyển sinh", i
 }
 
 function showConfirm(message, onYesCallback, title = "Hệ thống nhập liệu tuyển sinh") {
+    customModalSyncLock = false;
     const modal = document.getElementById('customModal');
     document.getElementById('modalHeader').className = 'modal-header warn';
     document.getElementById('modalHeader').innerHTML = `<span>❓</span> ${title}`;
@@ -448,6 +477,7 @@ function showConfirm(message, onYesCallback, title = "Hệ thống nhập liệu
 }
 
 function showUpdateOrInsertConfirm(message, dataInfo, onUpdateCallback, onInsertCallback) {
+    customModalSyncLock = false;
     const modal = document.getElementById('customModal');
     document.getElementById('modalHeader').className = 'modal-header info';
     document.getElementById('modalHeader').innerHTML = `<span>💡</span> Hệ thống nhập liệu tuyển sinh`;
@@ -956,7 +986,9 @@ function parseExcelFileToItems(file) {
 }
 
 // ==========================================
-// KIỂM TRA KHỚP TIÊU ĐỀ FILE MẪU VỚI SHEET TRUNG GIAN — BẮT BUỘC KHỚP 100% MỚI CHO ĐẨY DỮ LIỆU
+// KIỂM TRA KHỚP TIÊU ĐỀ FILE MẪU VỚI SHEET TRUNG GIAN — KHỚP THEO TÊN NỘI DUNG, KHÔNG THEO VỊ TRÍ
+// File mẫu chỉ chứa MỘT TẬP CON cột (không có các cột hệ thống/tính toán như MÃ SINH VIÊN, ĐIỂM ƯU TIÊN,
+// Điểm chuẩn, Điểm trúng tuyển, TRẠNG THÁI THẨM ĐỊNH...) nên KHÔNG được bắt đúng số lượng/thứ tự cột.
 // Tiêu đề chuẩn được lấy TRỰC TIẾP từ hàng tiêu đề thật trên Google Sheet trung gian (không hard-code
 // sẵn ở client) để không bị lệch khi sheet đổi cột mà file mẫu tải về trước đó chưa cập nhật kịp.
 // ==========================================
@@ -973,17 +1005,32 @@ async function fetchIntermediateSheetHeader() {
     return result.headers.map(h => String(h || "").trim());
 }
 
-// So khớp 100%: đúng số lượng cột, đúng tên từng cột, đúng thứ tự. Trả về danh sách điểm khác biệt
-// (mảng rỗng nghĩa là khớp hoàn toàn) để hiển thị rõ cho người dùng biết sai ở đâu.
-function diffHeaders(fileHeaders, expectedHeaders) {
-    const diffs = [];
-    const maxLen = Math.max(fileHeaders.length, expectedHeaders.length);
-    for (let i = 0; i < maxLen; i++) {
-        const a = fileHeaders[i] || "(thiếu cột)";
-        const b = expectedHeaders[i] || "(thừa cột)";
-        if (a !== b) diffs.push(`Cột ${i + 1}: file có "${a}" — hệ thống cần "${b}"`);
-    }
-    return diffs;
+// Khớp tên cột theo CÙNG bộ alias với backend (hàm findColIndexByName trong GAS_trunggian_gs) để
+// kết quả kiểm tra ở frontend và backend luôn nhất quán với nhau, không bị lệch.
+function findColIndexByNameJs(headers, key) {
+    const cleanKey = String(key).toUpperCase().trim().replace(/\s+/g, ' ');
+    return headers.findIndex(h => {
+        const cleanH = String(h).toUpperCase().trim().replace(/\s+/g, ' ');
+        if (cleanH === cleanKey) return true;
+        if (cleanKey === "BẢN SAO ID" && (cleanH === "BẢN SAO CCCD" || cleanH === "BẢN SAO CĂN CƯỚC")) return true;
+        if (cleanKey === "CĂN CƯỚC" && (cleanH === "SỐ CCCD" || cleanH === "CCCD")) return true;
+        if (cleanKey === "TIME" && (cleanH === "NGÀY NỘP" || cleanH.indexOf("NGÀY CẬP NHẬT") !== -1 || cleanH === "NGÀY XỬ LÝ")) return true;
+        return false;
+    });
+}
+
+// Trả về danh sách tên cột TRONG FILE không khớp được với bất kỳ cột nào trên hệ thống (mảng rỗng =
+// mọi cột trong file đều hợp lệ). Bỏ qua 4 cột hệ thống (backend tự chèn/quản lý). Cột nào hệ thống có
+// mà file KHÔNG có thì không tính là lỗi — cứ để trống khi ghi, vì file mẫu vốn chỉ là tập con cột.
+function findUnmatchedHeaders(fileHeaders, expectedHeaders) {
+    const unmatched = [];
+    fileHeaders.forEach(h => {
+        if (!h) return; // cột trống trong file (không có tiêu đề) -> bỏ qua
+        const cleanH = h.toUpperCase().trim().replace(/\s+/g, ' ');
+        if (IMPORT_EXCLUDE_COLS.indexOf(cleanH) !== -1) return; // cột hệ thống -> luôn cho qua
+        if (findColIndexByNameJs(expectedHeaders, h) === -1) unmatched.push(h);
+    });
+    return unmatched;
 }
 
 async function executeImportExcelUpload() {
@@ -1015,8 +1062,9 @@ async function executeImportExcelUpload() {
         return;
     }
 
-    // BẮT BUỘC: tiêu đề file phải khớp 100% với tiêu đề thật trên sheet trung gian — không khớp thì
-    // báo lỗi rõ ràng và DỪNG LẠI NGAY, không cho đẩy dữ liệu lên.
+    // Tiêu đề trong file phải khớp TÊN với cột thật trên sheet trung gian (không cần đủ hết mọi cột,
+    // không cần đúng thứ tự) — cột nào không khớp tên nào cả thì báo lỗi rõ ràng và DỪNG LẠI NGAY,
+    // không cho đẩy dữ liệu lên.
     btn.innerHTML = "⏳ Đang kiểm tra tiêu đề...";
     let expectedHeaders;
     try {
@@ -1027,14 +1075,15 @@ async function executeImportExcelUpload() {
         return;
     }
 
-    const diffs = diffHeaders(fileHeaders, expectedHeaders);
-    if (diffs.length > 0) {
+    const unmatchedHeaders = findUnmatchedHeaders(fileHeaders, expectedHeaders);
+    if (unmatchedHeaders.length > 0) {
         btn.disabled = false; btn.innerHTML = originalText;
         showAlert(
-            `File KHÔNG khớp tiêu đề với hệ thống — dữ liệu CHƯA được đẩy lên.\n\n` +
-            diffs.slice(0, 10).join('\n') +
-            (diffs.length > 10 ? `\n...và ${diffs.length - 10} khác biệt khác` : '') +
-            `\n\n👉 Vui lòng tải lại file mẫu mới nhất ("Tải file mẫu") và nhập lại từ đầu, không tự ý đổi tên/thêm/bớt/đảo cột.`,
+            `File có cột KHÔNG khớp với hệ thống — dữ liệu CHƯA được đẩy lên.\n\n` +
+            `Các cột sau trong file không nhận diện được:\n` +
+            unmatchedHeaders.slice(0, 10).map(h => `- "${h}"`).join('\n') +
+            (unmatchedHeaders.length > 10 ? `\n...và ${unmatchedHeaders.length - 10} cột khác` : '') +
+            `\n\n👉 Vui lòng kiểm tra lại đúng tên cột (không tự ý đổi tên/gõ sai chính tả), hoặc tải lại file mẫu mới nhất ("Tải file mẫu").`,
             "❌ TIÊU ĐỀ KHÔNG KHỚP", true
         );
         return;
@@ -1051,6 +1100,10 @@ async function executeImportExcelUpload() {
 async function sendImportItemsToCloud(fileHeaders, items) {
     const sb = document.getElementById('statusBar');
     if (sb) sb.innerText = `⏳ Đang nhập ${items.length} hồ sơ từ file Excel lên hệ thống...`;
+
+    // Đồng bộ với nút "Đẩy dữ liệu lên hệ thống": khóa popup lại bằng nội dung "Đang đồng bộ" cho tới
+    // khi có kết quả thành công/thất bại, không cho đóng giữa chừng.
+    showSyncingModal(`Đang đồng bộ ${items.length} hồ sơ từ file Excel lên hệ thống, vui lòng chờ trong giây lát...\nKhông tắt hay tải lại trang trong lúc này.`);
 
     try {
         const response = await fetch(WEB_APP_URL, {
@@ -1149,6 +1202,9 @@ async function executeUploadToCloud(pendingList) {
     // BỌC GIÁP: KIỂM TRA STATUS BAR
     const sb = document.getElementById('statusBar');
     if(sb) sb.innerText = `⏳ Đang tải ${pendingList.length} hồ sơ mới lên hệ thống...`;
+
+    // Bật popup "Đang đồng bộ" và khóa lại — không cho đóng cho tới khi có kết quả thành công/thất bại.
+    showSyncingModal(`Đang đồng bộ ${pendingList.length} hồ sơ lên hệ thống, vui lòng chờ trong giây lát...\nKhông tắt hay tải lại trang trong lúc này.`);
     
     const pushTimeText = getNowTimestampAsText(); const displayTime = pushTimeText.substring(1);
     const dataToSend = pendingList.map(row => { const copyRow = { ...row }; delete copyRow["TRẠNG THÁI ĐẨY"]; copyRow["TIME"] = pushTimeText; return copyRow; });
@@ -1456,7 +1512,8 @@ window.addEventListener('keydown', function(event) {
         const lookupModal = document.getElementById('lookupModal');           // z-index mặc định (thấp nhất)
 
         if (customModal && customModal.style.display === 'flex') {
-            customModal.style.display = 'none';
+            // Đang khóa (ví dụ: đang đồng bộ dữ liệu lên hệ thống) -> ESC không có tác dụng, bắt buộc chờ xong.
+            if (!customModalSyncLock) customModal.style.display = 'none';
         } else if (hoSoDetailModal && hoSoDetailModal.style.display === 'flex') {
             closeHoSoDetailModal();
         } else if (importExcelModal && importExcelModal.style.display === 'flex') {
