@@ -302,7 +302,7 @@ window.addEventListener('DOMContentLoaded', () => {
 //   tác, bấm 1 cái để làm mới thủ công, không mất dữ liệu, không cần tải lại trang.
 // ==========================================
 const IDLE_CONFIG = {
-    IDLE_TIMEOUT_MS: 30 * 60 * 1800,        // 10 phút rảnh tay -> tự đăng xuất (theo chốt của bạn)
+    IDLE_TIMEOUT_MS: 10 * 60 * 1000,        // 10 phút rảnh tay -> tự đăng xuất (theo chốt của bạn)
     RENEW_BEFORE_EXPIRY_MS: 5 * 60 * 1000,  // còn 5 phút hết hạn token -> thử làm mới ngầm
     WATCHER_INTERVAL_MS: 30 * 1000,         // tick mỗi 30 giây
     ACTIVITY_THROTTLE_MS: 8 * 1000,         // throttle ghi nhận hoạt động (đỡ tốn, nằm trong khung 5-10s)
@@ -358,7 +358,7 @@ function forceLogoutDueToIdle() {
     updateAccountLabel();
     const gateLabel = document.getElementById('gate-account-label');
     if (gateLabel) {
-        gateLabel.innerText = "⏱️ Phiên làm việc quá hạn, vui lòng đăng nhập lại.";
+        gateLabel.innerText = "⏱️ Phiên làm việc quá hạn do không thao tác quá 10 phút, vui lòng đăng nhập lại.";
         gateLabel.style.color = "#d32f2f";
     }
 }
@@ -1108,19 +1108,13 @@ function hsBuildChecklistTable(pairs) {
     return `<div class="hs-table-wrap"><table class="hs-table">${rows}</table></div>`;
 }
 
-// Ánh xạ Đối tượng đầu vào -> danh sách nhãn hồ sơ TIÊN QUYẾT tương ứng, lấy đúng theo
-// các nhóm .doc-group (group-thpt, group-tc-sau2022, group-tc-truoc2022, group-caodang, group-daihoc)
-// mà handleDoiTuongChange() đang ẩn/hiện trên form nhập tay — để modal chi tiết lọc field
-// theo đúng "tinh thần" hiển thị của form, không lệch logic ở 2 nơi.
-// Nhãn ở đây phải khớp CHÍNH XÁC với nhãn dùng trong mảng hoSoPairs bên openHoSoDetailModal().
-const HOSO_TIENQUYET_LABELS_BY_DOITUONG = {
-    "Tốt nghiệp THPT": ["Bản sao bằng THPT/Giấy báo điểm", "Bản sao học bạ THPT"],
-    "Tốt nghiệp Trung cấp sau 2022": ["Bản sao bằng trung cấp", "Bảng điểm trung cấp", "Bằng THPT/GCN đủ KL KTVH THPT"],
-    "Tốt nghiệp Trung cấp trước 2022": ["Bản sao bằng trung cấp trước 2022", "Bảng điểm trung cấp trước 2022", "GCN hoàn thành CT GDPT"],
-    "Trung học nghề": ["Bản sao bằng trung cấp trước 2022", "Bảng điểm trung cấp trước 2022", "GCN hoàn thành CT GDPT"],
-    "Tốt nghiệp Cao đẳng": ["Bằng cao đẳng", "Bảng điểm cao đẳng"],
-    "Tốt nghiệp Đại học": ["Bằng đại học", "Bảng điểm đại học"]
-};
+// TRƯỚC ĐÂY: có 1 bảng ánh xạ HOSO_TIENQUYET_LABELS_BY_DOITUONG hard-code riêng ở đây, tách biệt
+// khỏi DICT_HO_SO.tien_quyet (nguồn thật mà live box autoCheckAdmission() đang dùng) -> 2 nơi có thể
+// lệch nhau (sai chính tả/dấu, hoặc data_config.js thêm đối tượng mới mà quên sửa bảng này), khiến
+// modal + bảng danh sách rơi vào nhánh "không khớp key nào" và hiển thị/tính THIẾU nhầm dù live box
+// báo Đầy đủ. ĐÃ BỎ bảng hard-code đó — giờ lấy thẳng danh sách tiên quyết từ DICT_HO_SO.tien_quyet
+// (đúng 1 nguồn duy nhất, dùng chung với computeAdmissionCore()) ngay tại nơi sử dụng bên dưới,
+// nên modal/bảng danh sách và live box KHÔNG THỂ lệch nhau nữa.
 // 4 mục hồ sơ CHUNG luôn hiện với mọi đối tượng đầu vào (đúng khối "doc-chk-common" trên form).
 const HOSO_CHUNG_LABELS = ["Phiếu đăng ký dự tuyển", "Sơ yếu lý lịch", "Bản sao ID", "Ảnh thẻ"];
 
@@ -1165,7 +1159,9 @@ function openHoSoDetailModal(index) {
         "Bằng cao đẳng": row["BẰNG CAO ĐẲNG"], "Bảng điểm cao đẳng": row["BẢNG ĐIỂM CAO ĐẲNG"],
         "Bằng đại học": row["BẰNG ĐẠI HỌC"], "Bảng điểm đại học": row["BẢNG ĐIỂM ĐẠI HỌC"]
     };
-    const tienQuyetLabels = HOSO_TIENQUYET_LABELS_BY_DOITUONG[doiTuongDauVao] || [];
+    // Lấy đúng 1 nguồn duy nhất DICT_HO_SO.tien_quyet[doiTuongDauVao] — CÙNG nguồn mà
+    // computeAdmissionCore()/autoCheckAdmission() (live box) đang dùng để tính missingTienQuyet.
+    const tienQuyetLabels = (DICT_HO_SO.tien_quyet[doiTuongDauVao] || []).map(doc => doc.name);
     const hoSoTienQuyetPairs = tienQuyetLabels.map(label => [label, hoSoTienQuyetAll[label]]);
     // Không lọc được đối tượng đầu vào (hồ sơ thiếu/lỗi dữ liệu) → hiện hết để không giấu mất thông tin đã có.
     const hoSoPairs = tienQuyetLabels.length > 0
@@ -1230,7 +1226,7 @@ function openHoSoDetailModal(index) {
 }
 
 function exportToExcel() {
-    if (dataList.length === 0) { showAlert("Chưa có dữ liệu để xuất file !", "⚠️ KHÔNG CÓ DỮ LIỆU", true); return; }
+    if (dataList.length === 0) { showAlert("Danh sách hồ sơ hiện tại đang trống. Vui lòng nhập dữ liệu trước khi xuất!", "⚠️ KHÔNG CÓ DỮ LIỆU", true); return; }
     const worksheet = XLSX.utils.json_to_sheet(dataList.map(row => ({...row})));
     const workbook = XLSX.utils.book_new(); XLSX.utils.book_append_sheet(workbook, worksheet, "DuLieuNhap");
     XLSX.writeFile(workbook, `Du_Lieu_Nhap_${new Date().toISOString().slice(0,10)}.xlsx`);
@@ -1397,7 +1393,7 @@ async function executeImportExcelUpload() {
     if (!importSelectedFile) return;
 
     if (!isLoggedIn()) {
-        showAlert("Bạn chưa đăng nhập Google hoặc phiên làm việc đã quá hạn.\n\n👉 Vui lòng đăng nhập rồi thử lại.", "🔒 CẦN ĐĂNG NHẬP", true);
+        showAlert("Bạn chưa đăng nhập Google hoặc phiên đăng nhập đã hết hạn (token sống khoảng 1 giờ).\n\n👉 Vui lòng bấm nút đăng nhập Google ở đầu trang rồi thử lại.", "🔒 CẦN ĐĂNG NHẬP", true);
         return;
     }
 
@@ -1418,20 +1414,20 @@ async function executeImportExcelUpload() {
 
     if (items.length === 0) {
         btn.disabled = false; btn.innerHTML = originalText;
-        showAlert("File không có dữ liệu.", "⚠️ KHÔNG CÓ DỮ LIỆU", true);
+        showAlert("Không tìm thấy hồ sơ nào để nhập trong file (đã bỏ qua dòng tiêu đề, dòng mẫu và các dòng trống).", "⚠️ KHÔNG CÓ DỮ LIỆU", true);
         return;
     }
 
     // Tiêu đề trong file phải khớp TÊN với cột thật trên sheet trung gian (không cần đủ hết mọi cột,
     // không cần đúng thứ tự) — cột nào không khớp tên nào cả thì báo lỗi rõ ràng và DỪNG LẠI NGAY,
     // không cho đẩy dữ liệu lên.
-    btn.innerHTML = "⏳ Đang xử lý...";
+    btn.innerHTML = "⏳ Đang kiểm tra tiêu đề...";
     let expectedHeaders;
     try {
         expectedHeaders = await fetchIntermediateSheetHeader();
     } catch (err) {
         btn.disabled = false; btn.innerHTML = originalText;
-        showAlert(`Cấu trúc file mẫu không đúng, dữ liệu CHƯA được đẩy lên. Tải lại file mẫu và chuyển dữ liệu sang.\n\n👉 Chi tiết lỗi: ${err}`, "❌ LỖI CẤU TRÚC FILE MẪU", true);
+        showAlert(`Không kiểm tra được tiêu đề file với hệ thống, dữ liệu CHƯA được đẩy lên.\n\n👉 Chi tiết lỗi: ${err}`, "❌ LỖI KIỂM TRA TIÊU ĐỀ", true);
         return;
     }
 
@@ -1488,7 +1484,7 @@ function addImportedItemsToLocalList(items) {
 
     if (uniqueItems.length === 0) {
         showAlert(
-            `Toàn bộ ${items.length} hồ sơ trong file đã có sẵn trong danh sách hiện tại. Sử dụng chức năng Sửa để cập nhật thông tin — không có hồ sơ mới nào được thêm.`,
+            `Toàn bộ ${items.length} hồ sơ trong file đã có sẵn trong danh sách hiện tại. Sử dụng chức năng <b>Sửa</b> để cập nhật thông tin — không có hồ sơ mới nào được thêm.`,
             "⚠️ TOÀN BỘ ĐÃ TRÙNG", true
         );
         return;
@@ -1512,7 +1508,7 @@ function addImportedItemsToLocalList(items) {
 
     let msg = `Đã nạp ${uniqueItems.length} hồ sơ từ file Excel vào danh sách bên dưới.`;
     if (duplicateInfo.length > 0) {
-        msg += `\n\n⚠️ Đã bỏ qua ${duplicateInfo.length} hồ sơ trùng với dữ liệu đang có, Sử dụng chức năng Sửa để cập nhật thông tin:\n` +
+        msg += `\n\n⚠️ Đã bỏ qua ${duplicateInfo.length} hồ sơ trùng CĂN CƯỚC + NGÀNH với dữ liệu đang có, Sử dụng chức năng <b>Sửa</b> để cập nhật thông tin:\n` +
             duplicateInfo.slice(0, 10).join('\n') +
             (duplicateInfo.length > 10 ? `\n...và ${duplicateInfo.length - 10} hồ sơ khác` : '');
     }
@@ -1589,7 +1585,7 @@ async function sendToCloud() {
         // TRÙNG THẬT SỰ (đã có trên hệ thống, hoặc trùng ngay trong danh sách đang chờ) -> CHẶN CỨNG,
         // không cho đẩy tiếp. Người dùng phải tự sửa (xoá bớt dòng trùng, hoặc dùng "🔍 Tìm hồ sơ cũ" để UPDATE).
         showAlert(
-            "Phát hiện hồ sơ TRÙNG, KHÔNG THỂ đẩy lên:\n\n" + dupCheck.duplicates.join('\n') +
+            "Phát hiện hồ sơ TRÙNG Căn cước + Ngành, KHÔNG THỂ đẩy lên:\n\n" + dupCheck.duplicates.join('\n') +
             "\n\n👉 Nếu là hồ sơ nộp bổ sung, hãy dùng chức năng \"🔍 Tìm hồ sơ cũ\" để sửa thay vì thêm mới.",
             "⛔ TRÙNG DỮ LIỆU", true
         );
@@ -1630,7 +1626,7 @@ async function sendToCloud() {
 async function executeUploadToCloud(pendingList) {
     // BẮT BUỘC ĐĂNG NHẬP GOOGLE TRƯỚC KHI GHI DỮ LIỆU
     if (!isLoggedIn()) {
-        showAlert("Phiên đăng nhập đã quá hạn.\n\n👉 Vui lòng tải lại trang.", "🔒 CẦN ĐĂNG NHẬP", true);
+        showAlert("Phiên đăng nhập đã hết hạn.\n\n👉 Vui lòng tải lại trang.", "🔒 CẦN ĐĂNG NHẬP", true);
         return;
     }
 
@@ -1675,7 +1671,7 @@ async function executeUploadToCloud(pendingList) {
             if (skipped.length > 0) {
                 const skippedText = skipped.map(s => `- [${s.ten || s.cccd}] (CCCD ${s.cccd} - ${s.nganh})`).join('\n');
                 showAlert(
-                    `Đã nạp thành công ${uploadedCount} hồ sơ lúc ${displayTime}.\n\n⚠️ ${skipped.length} hồ sơ bị TỪ CHỐI vì TRÙNG Căn cước + Ngành với dữ liệu đã có:\n${skippedText}\n\n👉 Kiểm tra lại, nếu là nộp bổ sung hãy dùng "🔍 Tìm hồ sơ cũ" để sửa.`,
+                    `Đã nạp thành công ${uploadedCount} hồ sơ lúc ${displayTime}.\n\n⚠️ ${skipped.length} hồ sơ bị máy chủ TỪ CHỐI vì TRÙNG Căn cước + Ngành với dữ liệu đã có, vẫn còn ở trạng thái "Waiting":\n${skippedText}\n\n👉 Kiểm tra lại, nếu là nộp bổ sung hãy dùng "🔍 Tìm hồ sơ cũ" để sửa.`,
                     "⚠️ MỘT SỐ HỒ SƠ BỊ TỪ CHỐI", true
                 );
             } else {
@@ -1778,7 +1774,7 @@ function loadOldCandidate(index) {
 
     let title = isApproved ? "🔒 Hồ sơ đã duyệt trúng tuyển" : "💡 Đã tải lại hồ sơ";
     let message = isApproved 
-        ? "Hồ sơ này đã ĐƯỢC DUYỆT TRÚNG TUYỂN.\n\n👉 Bạn chỉ có thể TÍCH BỔ SUNG hồ sơ đính kèm !" 
+        ? "Hồ sơ này đã ĐƯỢC DUYỆT TRÚNG TUYỂN.\n\n👉 Bạn chỉ có thể TÍCH BỔ SUNG hồ sơ đính kèm, KHÔNG ĐƯỢC PHÉP sửa thông tin cá nhân hay điểm số!" 
         : "Hồ sơ đã trả về.\n\n👉 Bạn có thể bổ sung thông tin, NGOẠI TRỪ NGÀNH XÉT TUYỂN.";
 
     // Gọi Modal tùy chỉnh
@@ -2024,7 +2020,7 @@ async function processCCCDImage(input) {
 
     if (!isLoggedIn()) {
         input.value = "";
-        showAlert("Phiên làm việc đã quá hạn , vui lòng đăng nhập lại.", "⚠️ CHƯA ĐĂNG NHẬP", true);
+        showAlert("Phiên đăng nhập đã hết hạn hoặc chưa đăng nhập, vui lòng đăng nhập lại.", "⚠️ CHƯA ĐĂNG NHẬP", true);
         return;
     }
 
@@ -2106,7 +2102,7 @@ async function processCCCDImage(input) {
                     if (hetHan) {
                         statusText.innerText = `❌ Giấy tờ hết hiệu lực (hạn: ${hanSuDung}) — không thể sử dụng.`;
                         statusText.style.color = "#d32f2f";
-                        showAlert(`${loaiGiayTo === "hochieu" ? "Hộ chiếu" : "CCCD"} này đã HẾT HIỆU LỰC từ ngày ${hanSuDung}.\n\nVui lòng sử dụng giấy tờ còn hiệu lực.`, "⚠️ GIẤY TỜ HẾT HIỆU LỰC", true);
+                        showAlert(`${loaiGiayTo === "hochieu" ? "Hộ chiếu" : "CCCD"} này đã HẾT HIỆU LỰC từ ngày ${hanSuDung}.\n\nVui lòng dùng giấy tờ còn hiệu lực, hệ thống sẽ không tự động điền dữ liệu từ ảnh này.`, "⚠️ GIẤY TỜ HẾT HIỆU LỰC", true);
                         input.value = "";
                         return;
                     }
