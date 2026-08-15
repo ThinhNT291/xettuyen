@@ -867,6 +867,35 @@ function handleDoiTuongChange() {
     else if (dt === 'Tốt nghiệp Đại học') { document.getElementById('group-daihoc').style.display = 'block'; document.getElementById('score-other-group').style.display = 'block'; }
 }
 
+// ==========================================
+// NGUỒN DUY NHẤT CHO TOÀN BỘ 16 LOẠI HỒ SƠ (CHUNG + TIÊN QUYẾT CỦA MỌI ĐỐI TƯỢNG)
+// Gộp DICT_HO_SO.chung + toàn bộ DICT_HO_SO.tien_quyet (dedupe theo "id", vì 1 loại hồ sơ như
+// "Phiếu đăng ký dự tuyển" là tiên quyết của NHIỀU đối tượng — chỉ giữ lại 1 bản ghi đầu tiên gặp).
+// SẮP XẾP theo trường "order" khai báo trong data_config.js -> ra ĐÚNG thứ tự 16 cột như bảng cũ
+// (đã kiểm tra khớp 100%: PHIẾU ĐĂNG KÝ, SƠ YẾU LÝ LỊCH, BẢN SAO CCCD, ẢNH THẺ, BẰNG THPT, HỌC BẠ
+// THPT, BẰNG TC, ĐIỂM TC, GCN KTVH, BẰNG TC (<2022), ĐIỂM TC (<2022), GCN GDPT, BẰNG CĐ, ĐIỂM CĐ,
+// BẰNG ĐH, ĐIỂM ĐH) nên KHÔNG cần sửa <thead> trong index.html.
+// Dùng chung cho: addRow() (lưu), editRow() (tick lại checkbox), renderTable() (sinh ô ✔/✘) —
+// từ nay thêm/sửa/xóa 1 loại hồ sơ CHỈ CẦN sửa data_config.js (+ thêm/xóa checkbox tương ứng trong
+// form ở index.html), không cần đụng gì tới 3 hàm đó nữa.
+const ALL_HO_SO_DOCS = [...DICT_HO_SO.chung, ...Object.values(DICT_HO_SO.tien_quyet).flat()]
+    .filter((doc, i, arr) => arr.findIndex(d => d.id === doc.id) === i)
+    .sort((a, b) => (a.order || 0) - (b.order || 0));
+
+// Bảng alias CHỈ dùng riêng cho fillFormWithData() (nạp hồ sơ cũ tìm được) — vài cột hồ sơ cũ trên
+// Sheet/CSV cũ dùng tên VIẾT TẮT khác với "name" chuẩn hiện tại trong DICT_HO_SO (vd "SYLL" thay vì
+// "SƠ YẾU LÝ LỊCH"). 7 mục dưới đây là TOÀN BỘ các cột từng có tên viết tắt kiểu cũ; cột nào không có
+// mặt ở đây thì fillFormWithData() tự nhận theo đúng "name" chuẩn của DICT_HO_SO, không cần khai báo gì thêm.
+const HO_SO_IMPORT_ALIASES = {
+    "doc_phieu_dk": ["PHIẾU ĐK"],
+    "doc_syll": ["SYLL"],
+    "doc_cccd": ["BẢN SAO CCCD"],
+    "doc_bang_thpt": ["BẰNG THPT"],
+    "doc_hocba_thpt": ["HỌC BẠ THPT"],
+    "doc_bang_tc": ["BẰNG TC"],
+    "doc_diem_tc": ["BẢNG ĐIỂM TC"]
+};
+
 const getChkVal = (id) => {
     const el = document.getElementById(id);
     if (el.checked) return "TRUE";
@@ -935,16 +964,12 @@ function editRow(index) {
     
     currentAction = row["_Action"] || "INSERT";
 
-    const setChk = (id, key) => { document.getElementById(id).checked = (row[key] === "TRUE"); };
-    setChk('doc_phieu_dk', "PHIẾU ĐĂNG KÝ DỰ TUYỂN"); setChk('doc_syll', "SƠ YẾU LÝ LỊCH"); 
-    
-    // Đã đổi ở phần bốc dữ liệu lên form Web1
-    setChk('doc_cccd', "BẢN SAO ID"); 
-    
-    setChk('doc_anhthe', "ẢNH THẺ");
-    setChk('doc_bang_thpt', "BẢN SAO BẰNG THPT/GIẤY BÁO ĐIỂM"); setChk('doc_hocba_thpt', "BẢN SAO HỌC BẠ THPT"); setChk('doc_bang_tc', "BẢN SAO BẰNG TRUNG CẤP"); setChk('doc_diem_tc', "BẢNG ĐIỂM TRUNG CẤP");
-    setChk('doc_ktvh_thpt', "BẰNG THPT/GCN ĐỦ KL KTVH THPT"); setChk('doc_bang_tc_truoc', "BẢN SAO BẰNG TRUNG CẤP TRƯỚC 2022"); setChk('doc_diem_tc_truoc', "BẢNG ĐIỂM TRUNG CẤP TRƯỚC 2022");
-    setChk('doc_gcn_gdpt', "GCN HOÀN THÀNH CT GDPT"); setChk('doc_bang_cd', "BẰNG CAO ĐẲNG"); setChk('doc_diem_cd', "BẢNG ĐIỂM CAO ĐẲNG"); setChk('doc_bang_dh', "BẰNG ĐẠI HỌC"); setChk('doc_diem_dh', "BẢNG ĐIỂM ĐẠI HỌC");
+    // ĐÃ ĐỔI: tick lại TOÀN BỘ 16 checkbox hồ sơ bằng cách lặp qua ALL_HO_SO_DOCS (nguồn duy nhất,
+    // khai báo gần getChkVal() phía dưới) thay vì gõ tay từng dòng setChk(...) như trước.
+    ALL_HO_SO_DOCS.forEach(doc => {
+        const el = document.getElementById(doc.id);
+        if (el) el.checked = (row[doc.name.toUpperCase()] === "TRUE");
+    });
     
     const setScore = (id, key) => { document.getElementById(id).value = row[key] ? row[key].replace('.', sysSep) : ""; };
     
@@ -993,12 +1018,10 @@ function addRow() {
         "ĐỐI TƯỢNG ĐẦU VÀO": fields[7].value, "NĂM XÉT TUYỂN": fields[8].value, "HỆ ĐÀO TẠO": fields[9].value, "HÌNH THỨC ĐÀO TẠO": fields[10].value,
         "LINK HỒ SƠ": document.getElementById('link_folder').value.trim(),
         
-        // ĐÃ ĐỔI NHÃN BẢN SAO ID KHI LƯU VÀO JSON
-        "PHIẾU ĐĂNG KÝ DỰ TUYỂN": getChkVal('doc_phieu_dk'), "SƠ YẾU LÝ LỊCH": getChkVal('doc_syll'), "BẢN SAO ID": getChkVal('doc_cccd'), "ẢNH THẺ": getChkVal('doc_anhthe'),
+        // ĐÃ ĐỔI: lấy TOÀN BỘ 16 loại hồ sơ từ ALL_HO_SO_DOCS (nguồn duy nhất, khai báo gần
+        // getChkVal() phía dưới) thay vì gõ tay từng dòng getChkVal(...) như trước.
+        ...Object.fromEntries(ALL_HO_SO_DOCS.map(doc => [doc.name.toUpperCase(), getChkVal(doc.id)])),
         
-        "BẢN SAO BẰNG THPT/GIẤY BÁO ĐIỂM": getChkVal('doc_bang_thpt'), "BẢN SAO HỌC BẠ THPT": getChkVal('doc_hocba_thpt'), "BẢN SAO BẰNG TRUNG CẤP": getChkVal('doc_bang_tc'), "BẢNG ĐIỂM TRUNG CẤP": getChkVal('doc_diem_tc'),
-        "BẰNG THPT/GCN ĐỦ KL KTVH THPT": getChkVal('doc_ktvh_thpt'), "BẢN SAO BẰNG TRUNG CẤP TRƯỚC 2022": getChkVal('doc_bang_tc_truoc'), "BẢNG ĐIỂM TRUNG CẤP TRƯỚC 2022": getChkVal('doc_diem_tc_truoc'),
-        "GCN HOÀN THÀNH CT GDPT": getChkVal('doc_gcn_gdpt'), "BẰNG CAO ĐẲNG": getChkVal('doc_bang_cd'), "BẢNG ĐIỂM CAO ĐẲNG": getChkVal('doc_diem_cd'), "BẰNG ĐẠI HỌC": getChkVal('doc_bang_dh'), "BẢNG ĐIỂM ĐẠI HỌC": getChkVal('doc_diem_dh'),
         "GIẤY TỜ ƯU TIÊN": getVal('giay_uutien'), "TOÁN": getVal('diem_toan'), "VẬT LÍ": getVal('diem_vatli'), "HÓA HỌC": getVal('diem_hoahoc'), "SINH HỌC": getVal('diem_sinhhoc'), "NGỮ VĂN": getVal('diem_nguvan'),
         "LỊCH SỬ": getVal('diem_lichsu'), "ĐỊA LÝ": getVal('diem_dialy'), "TIẾNG ANH": getVal('diem_tienganh'), "TIẾNG TRUNG": getVal('diem_tiengtrung'), "TIN HỌC": getVal('diem_tinhoc'), "GDKTPL": getVal('diem_gdktpl'),
         "ĐIỂM TB TOÀN KHÓA HỆ 4": getVal('diem_tb_he4'), "ĐIỂM TB TOÀN KHÓA HỆ 10": getVal('diem_tb_he10'), "ĐIỂM CỘNG": getVal('diem_cong')
@@ -1034,10 +1057,13 @@ function renderTable() {
         // Cột "Kết quả sơ tuyển" (mục e): 2 dòng chữ thay cho đèn giao thông, tính lại từ chính dữ liệu
         // đã lưu của hàng này bằng computeAdmissionResultForRow() — dùng chung 1 bộ logic với
         // autoCheckAdmission() của form nhập tay, KHÔNG đụng gì tới form nhập tay ở trên.
+        // 16 ô ✔/✘ hồ sơ bên dưới giờ sinh tự động từ ALL_HO_SO_DOCS (đã kiểm tra khớp 100% thứ tự
+        // <thead> cũ — xem ghi chú tại nơi khai báo ALL_HO_SO_DOCS, gần getChkVal()), không còn gõ
+        // tay từng fmtTick(row["..."]) nữa. Thêm/sửa/xóa 1 loại hồ sơ chỉ cần sửa data_config.js.
         // LƯU Ý: cần thêm 1 cột <th>Kết quả sơ tuyển</th> tương ứng trong <thead> của file HTML
         // (chưa có trong file JS này) để bảng không bị lệch cột — gửi file HTML tôi gắn nốt.
         tr.innerHTML = `<td>${row["STT"]}</td><td class="${isUp ? 'status-done' : 'status-pending'}">${row["TRẠNG THÁI ĐẨY"]}</td><td style="font-size:12px; line-height:1.5; white-space:normal;">${buildAdmissionSummaryLines(row)}</td><td><b>${actionText}${row["CĂN CƯỚC"] || row["SỐ CCCD"]}</b></td><td>${row["TÊN SINH VIÊN"]}</td><td>${row["NGÀY SINH"]}</td><td>${row["NGÀNH"]}</td><td>${row["KHÓA"]}</td><td>${row["ĐỐI TƯỢNG ƯU TIÊN"]}</td><td>${row["KHU VỰC ƯU TIÊN"]}</td><td>${row["ĐỐI TƯỢNG ĐẦU VÀO"]}</td><td>${row["NĂM XÉT TUYỂN"]}</td><td>${row["HỆ ĐÀO TẠO"]}</td><td>${row["HÌNH THỨC ĐÀO TẠO"]}</td>
-            ${fmtLink(row["LINK HỒ SƠ"])}${fmtTick(row["PHIẾU ĐĂNG KÝ DỰ TUYỂN"])}${fmtTick(row["SƠ YẾU LÝ LỊCH"])}${fmtTick(row["BẢN SAO ID"])}${fmtTick(row["ẢNH THẺ"])}${fmtTick(row["BẢN SAO BẰNG THPT/GIẤY BÁO ĐIỂM"])}${fmtTick(row["BẢN SAO HỌC BẠ THPT"])}${fmtTick(row["BẢN SAO BẰNG TRUNG CẤP"])}${fmtTick(row["BẢNG ĐIỂM TRUNG CẤP"])}${fmtTick(row["BẰNG THPT/GCN ĐỦ KL KTVH THPT"])}${fmtTick(row["BẢN SAO BẰNG TRUNG CẤP TRƯỚC 2022"])}${fmtTick(row["BẢNG ĐIỂM TRUNG CẤP TRƯỚC 2022"])}${fmtTick(row["GCN HOÀN THÀNH CT GDPT"])}${fmtTick(row["BẰNG CAO ĐẲNG"])}${fmtTick(row["BẢNG ĐIỂM CAO ĐẲNG"])}${fmtTick(row["BẰNG ĐẠI HỌC"])}${fmtTick(row["BẢNG ĐIỂM ĐẠI HỌC"])}
+            ${fmtLink(row["LINK HỒ SƠ"])}${ALL_HO_SO_DOCS.map(doc => fmtTick(row[doc.name.toUpperCase()])).join('')}
             <td>${row["GIẤY TỜ ƯU TIÊN"]}</td><td>${row["TOÁN"]}</td><td>${row["VẬT LÍ"]}</td><td>${row["HÓA HỌC"]}</td><td>${row["SINH HỌC"]}</td><td>${row["NGỮ VĂN"]}</td><td>${row["LỊCH SỬ"]}</td><td>${row["ĐỊA LÝ"]}</td><td>${row["TIẾNG ANH"]}</td><td>${row["TIẾNG TRUNG"]}</td><td>${row["TIN HỌC"]}</td><td>${row["GDKTPL"]}</td><td><b>${row["ĐIỂM TB TOÀN KHÓA HỆ 4"]}</b></td><td><b>${row["ĐIỂM TB TOÀN KHÓA HỆ 10"]}</b></td><td><b style="color:#d32f2f">${row["ĐIỂM CỘNG"]}</b></td>
             <td>${!isUp ? `<div style="display:flex;"><button class="btn-edit-row" onclick="editRow(${index})" ${editingIndex !== -1 ? 'disabled style="opacity:0.5; cursor:not-allowed;"' : ''}>✏️</button><button class="btn-delete-row" onclick="deleteRow(${index})" ${editingIndex !== -1 ? 'disabled style="opacity:0.5; cursor:not-allowed;"' : ''}>🗑️</button></div>` : ''}</td>`;
         tbody.appendChild(tr);
@@ -1922,25 +1948,11 @@ function fillFormWithData(rowData) {
         }
     };
     
-    setChk('doc_phieu_dk', "PHIẾU ĐĂNG KÝ DỰ TUYỂN", "PHIẾU ĐK"); 
-    setChk('doc_syll', "SƠ YẾU LÝ LỊCH", "SYLL"); 
-    
-    // Đã thay CĂN CƯỚC bằng BẢN SAO ID vào hàng đợi ưu tiên cao nhất
-    setChk('doc_cccd', "BẢN SAO ID", "BẢN SAO CCCD"); 
-    
-    setChk('doc_anhthe', "ẢNH THẺ");
-    setChk('doc_bang_thpt', "BẢN SAO BẰNG THPT/GIẤY BÁO ĐIỂM", "BẰNG THPT"); 
-    setChk('doc_hocba_thpt', "BẢN SAO HỌC BẠ THPT", "HỌC BẠ THPT"); 
-    setChk('doc_bang_tc', "BẢN SAO BẰNG TRUNG CẤP", "BẰNG TC"); 
-    setChk('doc_diem_tc', "BẢNG ĐIỂM TRUNG CẤP", "BẢNG ĐIỂM TC");
-    setChk('doc_ktvh_thpt', "BẰNG THPT/GCN ĐỦ KL KTVH THPT"); 
-    setChk('doc_bang_tc_truoc', "BẢN SAO BẰNG TRUNG CẤP TRƯỚC 2022"); 
-    setChk('doc_diem_tc_truoc', "BẢNG ĐIỂM TRUNG CẤP TRƯỚC 2022");
-    setChk('doc_gcn_gdpt', "GCN HOÀN THÀNH CT GDPT"); 
-    setChk('doc_bang_cd', "BẰNG CAO ĐẲNG"); 
-    setChk('doc_diem_cd', "BẢNG ĐIỂM CAO ĐẲNG"); 
-    setChk('doc_bang_dh', "BẰNG ĐẠI HỌC"); 
-    setChk('doc_diem_dh', "BẢNG ĐIỂM ĐẠI HỌC");
+    // ĐÃ ĐỔI: lặp qua ALL_HO_SO_DOCS (nguồn duy nhất) thay vì gõ tay 16 dòng setChk(...) như trước.
+    // Cột nào có tên viết tắt kiểu cũ (SYLL, BẰNG TC...) thì tra thêm qua HO_SO_IMPORT_ALIASES.
+    ALL_HO_SO_DOCS.forEach(doc => {
+        setChk(doc.id, doc.name.toUpperCase(), ...(HO_SO_IMPORT_ALIASES[doc.id] || []));
+    });
 
     const setScore = (id, key) => { 
         let cleanK = key.trim().toUpperCase().replace(/\s+/g, ' ');
