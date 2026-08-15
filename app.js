@@ -747,19 +747,21 @@ function ensureHoSoDetailModal() {
         style.textContent = `
 #hoSoDetailModal { display:none; position:fixed; top:0; left:0; width:100%; height:100%;
     background:rgba(0,0,0,0.35); z-index:10020; align-items:center; justify-content:center; }
-#hoSoDetailModal .hs-box { background:#fdfdfb; color:#222; width:min(760px, 94vw); max-height:88vh;
+#hoSoDetailModal .hs-box { background:#fdfdfb; color:#222; width:min(660px, 94vw); max-height:88vh;
     overflow-y:auto; border-radius:6px; border:1px solid #ccc; box-shadow:0 4px 18px rgba(0,0,0,0.25); }
 #hoSoDetailModal .hs-header { display:flex; justify-content:space-between; align-items:center;
     background:#f0f0ec; color:#222; padding:12px 16px; border-bottom:1px solid #ddd;
     border-radius:6px 6px 0 0; position:sticky; top:0; }
 #hoSoDetailModal .hs-header b { font-size:15px; }
 #hoSoDetailModal .hs-close-x { cursor:pointer; font-size:18px; color:#555; background:none; border:none; line-height:1; }
-#hoSoDetailModal .hs-body { padding:14px 16px; font-size:13px; }
-#hoSoDetailModal .hs-section-title { font-weight:bold; margin:14px 0 6px; color:#333; }
+#hoSoDetailModal .hs-body { padding:12px 16px; font-size:12.5px; }
+#hoSoDetailModal .hs-section-title { font-weight:bold; margin:12px 0 5px; color:#333; }
 #hoSoDetailModal .hs-section-title:first-child { margin-top:0; }
-#hoSoDetailModal table.hs-table { width:100%; border-collapse:collapse; background:#fafaf8; }
-#hoSoDetailModal table.hs-table th, #hoSoDetailModal table.hs-table td { border:1px solid #ddd; padding:5px 8px; text-align:left; vertical-align:top; }
-#hoSoDetailModal table.hs-table th { width:26%; background:#f2f2ee; font-weight:600; color:#333; white-space:nowrap; }
+#hoSoDetailModal .hs-table-wrap { display:flex; justify-content:center; width:100%; overflow-x:auto; }
+#hoSoDetailModal table.hs-table { width:auto; max-width:100%; border-collapse:collapse; background:#fafaf8; margin:0 auto; }
+#hoSoDetailModal table.hs-table th, #hoSoDetailModal table.hs-table td { border:1px solid #ddd; padding:4px 9px; text-align:left; vertical-align:top; font-size:12.5px; }
+#hoSoDetailModal table.hs-table th { background:#f2f2ee; font-weight:600; color:#333; white-space:nowrap; }
+#hoSoDetailModal table.hs-table td { max-width:220px; }
 #hoSoDetailModal table.hs-table td.hs-tick-true { text-align:center; color:#222; font-weight:bold; }
 #hoSoDetailModal table.hs-table td.hs-tick-false { text-align:center; color:#666; }
 #hoSoDetailModal .hs-footer { display:flex; justify-content:flex-end; gap:8px; padding:12px 16px;
@@ -793,6 +795,7 @@ function closeHoSoDetailModal() {
 }
 
 // Dựng 1 bảng kẻ ô dạng "nhãn : giá trị", mỗi hàng 2 cặp label/value cho gọn.
+// Bọc trong wrapper canh giữa để bảng co theo đúng nội dung (không kéo giãn hết bề ngang popup).
 function hsBuildPairsTable(pairs) {
     let rows = '';
     for (let i = 0; i < pairs.length; i += 2) {
@@ -800,7 +803,7 @@ function hsBuildPairsTable(pairs) {
         const p2 = pairs[i + 1];
         rows += `<tr><th>${l1}</th><td>${v1}</td>${p2 ? `<th>${p2[0]}</th><td>${p2[1]}</td>` : `<th></th><td></td>`}</tr>`;
     }
-    return `<table class="hs-table">${rows}</table>`;
+    return `<div class="hs-table-wrap"><table class="hs-table">${rows}</table></div>`;
 }
 
 // Dựng bảng checklist hồ sơ (label + ✔/✘), mỗi hàng 2 cặp cho gọn.
@@ -812,7 +815,7 @@ function hsBuildChecklistTable(pairs) {
         const p2 = pairs[i + 1];
         rows += `<tr><th>${l1}</th>${tickCell(v1)}${p2 ? `<th>${p2[0]}</th>${tickCell(p2[1])}` : `<th></th><td></td>`}</tr>`;
     }
-    return `<table class="hs-table">${rows}</table>`;
+    return `<div class="hs-table-wrap"><table class="hs-table">${rows}</table></div>`;
 }
 
 function openHoSoDetailModal(index) {
