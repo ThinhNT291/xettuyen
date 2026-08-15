@@ -60,6 +60,45 @@
         @media (max-width: 600px) {
             .checkbox-grid { grid-template-columns: repeat(2, minmax(0, 1fr)) !important; }
         }
+
+        /* ==========================================================
+           HÀNG NÚT CÔNG CỤ: Import từ Excel / Tìm hồ sơ cũ / Quét CCCD
+           Gom 3 nút vào 1 hàng grid riêng, đồng bộ font, responsive.
+           ========================================================== */
+        .toolbar-actions-row {
+            display: grid;
+            grid-template-columns: repeat(3, minmax(0, 1fr));
+            gap: 10px;
+            margin-bottom: 14px;
+        }
+        .btn-toolbar-action {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 6px;
+            font-family: inherit;
+            font-size: 13px;
+            font-weight: bold;
+            color: #fff;
+            border: none;
+            padding: 9px 10px;
+            border-radius: 4px;
+            cursor: pointer;
+            box-shadow: 0 1px 3px rgba(0,0,0,0.2);
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+        }
+        .btn-toolbar-action:hover { filter: brightness(1.08); }
+        .btn-toolbar-import { background: #7b1fa2; }
+        .btn-toolbar-search { background: #f57c00; }
+        .btn-toolbar-scan { background: #4a7536; }
+        @media (max-width: 700px) {
+            .toolbar-actions-row { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+        }
+        @media (max-width: 420px) {
+            .toolbar-actions-row { grid-template-columns: 1fr; }
+        }
     </style>
 </head>
 <body>
@@ -94,26 +133,24 @@
     </div>
     
 <div class="section-title">I. THÔNG TIN CHUNG</div>
+    <div class="toolbar-actions-row">
+        <button type="button" class="btn-toolbar-action btn-toolbar-import" onclick="openImportExcelModal()">📂 Import từ Excel</button>
+        <button type="button" class="btn-toolbar-action btn-toolbar-search" onclick="openSearchModal()">🔍 Tìm hồ sơ cũ</button>
+        <button type="button" class="btn-toolbar-action btn-toolbar-scan" onclick="document.getElementById('cccdFile').click()">📸 Quét CCCD/Hộ chiếu</button>
+    </div>
+    <input type="file" id="cccdFile" accept="image/*" style="display: none;" onchange="processCCCDImage(this)">
     <div class="form-grid">
-     <!-- CỘT 1: HỌ TÊN & NÚT TÌM HS CŨ -->
+     <!-- CỘT 1: HỌ TÊN -->
         <div class="form-group">
-            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 5px; flex-wrap: wrap; gap: 5px;">
-                <label for="hoten" style="margin-bottom: 0;">Họ và tên <span class="req">(*)</span>:</label>
-                <button type="button" style="background: #f57c00; color: white; border: none; padding: 5px 12px; border-radius: 4px; font-size: 13px; font-weight: bold; cursor: pointer; box-shadow: 0 1px 3px rgba(0,0,0,0.2); white-space: nowrap;" onclick="openSearchModal()">🔍 Tìm HS cũ</button>
-            </div>
+            <label for="hoten">Họ và tên <span class="req">(*)</span>:</label>
             <input type="text" id="hoten" placeholder="Nguyễn Văn A" required>
         </div>
 
-        <!-- CỘT 2: SỐ CCCD & NÚT SCAN CCCD -->
+        <!-- CỘT 2: SỐ CCCD -->
         <div class="form-group">
             <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 5px; flex-wrap: wrap; gap: 5px;">
                 <label for="cccd" style="margin-bottom: 0;">Số CCCD/Hộ chiếu <span class="req">(*)</span>:</label>
-                
-                <div style="display: flex; align-items: center; gap: 10px;">
-                    <input type="file" id="cccdFile" accept="image/*" style="display: none;" onchange="processCCCDImage(this)">
-                    <span id="cccd-scan-status" style="font-size: 12px; color: #0288d1; font-style: italic;"></span>
-                    <button type="button" onclick="document.getElementById('cccdFile').click()" style="background: #4a7536; color: white; border: none; padding: 5px 12px; border-radius: 4px; font-size: 13px; font-weight: bold; cursor: pointer; box-shadow: 0 1px 3px rgba(0,0,0,0.2); white-space: nowrap;">📸 Scan CCCD/Hộ chiếu</button>
-                </div>
+                <span id="cccd-scan-status" style="font-size: 12px; color: #0288d1; font-style: italic;"></span>
             </div>
             <input type="text" id="cccd" placeholder="Nhập số CCCD hoặc số Hộ chiếu" required>
         </div>
@@ -399,7 +436,6 @@
     
     <div class="btn-group btn-bottom">
         <button class="btn-clear" onclick="clearTable()">🗑️ Xóa và nhập lại</button>
-        <button class="btn-export" style="background:#7b1fa2; border-color:#6a1b9a;" onclick="openImportExcelModal()">📂 Import từ Excel</button>
         <button class="btn-export" onclick="exportToExcel()">📥 Xuất file Excel</button>
         <button class="btn-push" id="btnPush" onclick="sendToCloud()">☁️ Đẩy dữ liệu lên hệ thống</button>
     </div>
@@ -476,12 +512,12 @@
             <a href="https://docs.google.com/spreadsheets/d/12_pZDTRZXwCqX8kf72Uq7VWN3GGcHlVIFdDMDIlbBHE/export?format=xlsx" rel="noopener" class="btn-template-download">⬇️ Tải file mẫu</a>
 
             <div class="import-file-row">
-                <div id="importFileNameBox" class="import-file-namebox">Chọn file...</div>
+                <div id="importFileNameBox" class="import-file-namebox">Chọn file dữ liệu...</div>
                 <button id="btnImportAction" class="btn-import-action" type="button">📁 Choose file</button>
             </div>
             <input type="file" id="importExcelFileInput" accept=".xlsx,.xls,.csv" style="display:none;" onchange="onImportFileChosen(this)">
 
-            <div class="import-hint">Dòng đầu tiên ngay sau tiêu đề được coi là <b>dòng mẫu/hướng dẫn</b> và sẽ tự động bị bỏ qua, không nhập vào hệ thống.</div>
+            <div class="import-hint">Chấp nhận file Excel (.xlsx, .xls) hoặc CSV chuẩn, đúng cấu trúc tiêu đề của file mẫu. Dòng đầu tiên ngay sau tiêu đề được coi là <b>dòng mẫu/hướng dẫn</b> và sẽ tự động bị bỏ qua, không nhập vào hệ thống.</div>
         </div>
     </div>
 </div>
