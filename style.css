@@ -74,6 +74,11 @@ tr:nth-child(even) { background-color: #f9f9f9; }
 */
 .status-duplicate { color: #000000; font-weight: bold; background-color: #ef6c00; padding: 3px 8px; border-radius: 4px; display: inline-block; }
 tr:has(.status-duplicate) td { background-color: #fff3e0 !important; }
+/* trạng thái "Failed" — hồ sơ SỬA thất bại (server chặn vì không khớp được hồ sơ gốc theo CCCD+Ngành).
+   Dùng đỏ đậm để phân biệt rõ với "Duplicated" (cam) — đây là lỗi CẦN xử lý ngay, không phải trùng
+   lặp thông thường: hồ sơ gốc trên hệ thống chưa được cập nhật gì cả. */
+.status-failed { color: #ffffff; font-weight: bold; background-color: #c62828; padding: 3px 8px; border-radius: 4px; display: inline-block; }
+tr:has(.status-failed) td { background-color: #fdecea !important; }
 .sep-notice { background-color: #fff3cd; color: #856404; border: 1px solid #ffeeba; padding: 10px 15px; border-radius: 6px; font-size: 13px; margin-bottom: 15px; display: flex; align-items: center; gap: 8px; }
 
 /* GIAO DIỆN MODAL SIÊU TỐC */
