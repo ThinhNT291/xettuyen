@@ -1734,17 +1734,34 @@ async function executeUploadToCloud(pendingList) {
             const skipped = Array.isArray(result.skipped) ? result.skipped : [];
             const skippedKeys = new Set(skipped.map(s => String(s.cccd || "").replace(/\D/g, '') + "|" + String(s.nganh || "").trim().toLowerCase()));
 
+            // "failedUpdates": server chặn các hồ sơ gửi lên với _Action = "UPDATE" nhưng KHÔNG khớp
+            // được dòng gốc theo cặp khóa CCCD+NGÀNH hiện có trên sheet (lớp phòng thủ backend) —
+            // hồ sơ gốc VẪN KHÔNG ĐỔI GÌ và KHÔNG có dòng mới nào được tạo, cần báo ngay cho người
+            // dùng biết để tự kiểm tra lại, tránh tưởng nhầm là đã sửa thành công.
+            const failedUpdates = Array.isArray(result.failedUpdates) ? result.failedUpdates : [];
+            const failedKeys = new Set(failedUpdates.map(s => String(s.cccd || "").replace(/\D/g, '') + "|" + String(s.nganh || "").trim().toLowerCase()));
+
             let uploadedCount = 0;
             dataList.forEach(row => {
                 if (row["TRẠNG THÁI ĐẨY"] !== "Waiting") return;
                 const rowKey = String(row["CĂN CƯỚC"] || "").replace(/\D/g, '') + "|" + String(row["NGÀNH"] || "").trim().toLowerCase();
                 if (skippedKeys.has(rowKey)) { row["TRẠNG THÁI ĐẨY"] = "Duplicated"; return; }
+                if (failedKeys.has(rowKey)) { row["TRẠNG THÁI ĐẨY"] = "Failed"; return; }
                 row["TRẠNG THÁI ĐẨY"] = "Uploaded";
                 uploadedCount++;
             });
             renderTable();
 
-            if (skipped.length > 0) {
+            if (failedUpdates.length > 0) {
+                const failedText = failedUpdates.map(s => `- [${s.ten || s.cccd}] (CCCD ${s.cccd} - ${s.nganh})`).join('\n');
+                const skippedNote = skipped.length > 0
+                    ? `\n\n⚠️ Ngoài ra còn ${skipped.length} hồ sơ bị từ chối vì TRÙNG Căn cước + Ngành.`
+                    : '';
+                showAlert(
+                    `Đã nạp thành công ${uploadedCount} hồ sơ lúc ${displayTime}.\n\n🚫 ${failedUpdates.length} hồ sơ SỬA THẤT BẠI vì không khớp được hồ sơ gốc (CCCD/Ngành gửi lên khác với hồ sơ đang sửa) — hồ sơ gốc trên hệ thống KHÔNG bị thay đổi:\n${failedText}${skippedNote}\n\n👉 Vui lòng dùng lại "🔍 Tìm hồ sơ cũ" để sửa đúng hồ sơ, không tự đổi CCCD/Ngành.`,
+                    "🚫 MỘT SỐ HỒ SƠ SỬA THẤT BẠI", true
+                );
+            } else if (skipped.length > 0) {
                 const skippedText = skipped.map(s => `- [${s.ten || s.cccd}] (CCCD ${s.cccd} - ${s.nganh})`).join('\n');
                 showAlert(
                     `Đã nạp thành công ${uploadedCount} hồ sơ lúc ${displayTime}.\n\n⚠️ ${skipped.length} hồ sơ bị máy chủ TỪ CHỐI vì TRÙNG Căn cước + Ngành với dữ liệu đã có, đã đánh dấu "Duplicated":\n${skippedText}\n\n👉 Kiểm tra lại, nếu là nộp bổ sung hãy dùng "🔍 Tìm hồ sơ cũ" để sửa.`,
@@ -1908,14 +1925,20 @@ function lockSectionsIfApproved(statusString) {
         });
         // (Đã xóa showAlert ở đây vì popup đã hiện từ bước bấm nút Sửa)
     } else {
-        // LUẬT 2: NẾU CHỜ DUYỆT -> CHỈ KHÓA Ô NGÀNH
-        let nganhEl = document.getElementById('nganh');
-        if(nganhEl) {
-            nganhEl.disabled = true; 
-            nganhEl.style.background = "#e9ecef"; 
-            nganhEl.style.opacity = "0.7"; 
-            nganhEl.style.cursor = "not-allowed";
-        }
+        // LUẬT 2: NẾU CHỜ DUYỆT -> KHÓA CẢ CCCD LẪN NGÀNH
+        // (ĐÃ SỬA BUG: trước đây chỉ khóa Ngành, nhưng backend khớp hồ sơ cũ để UPDATE bằng
+        // đúng cặp khóa CCCD+NGÀNH -> nếu chỉ khóa Ngành, người dùng vẫn sửa được CCCD, khiến
+        // findMatchingRowIndex() phía backend không khớp được dòng cũ -> rớt xuống nhánh appendRow,
+        // tạo nhầm 1 hồ sơ MỚI thay vì cập nhật hồ sơ đang sửa. Khóa cả 2 trường của khóa chống trùng.)
+        ['cccd', 'nganh'].forEach(id => {
+            let el = document.getElementById(id);
+            if(el) {
+                el.disabled = true;
+                el.style.background = "#e9ecef";
+                el.style.opacity = "0.7";
+                el.style.cursor = "not-allowed";
+            }
+        });
         // (Đã xóa showAlert ở đây vì popup đã hiện từ bước bấm nút Sửa)
     }
 }
